@@ -123,6 +123,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!video) {
         return res.status(404).json({ message: "Video not found" });
       }
+      
+      // Only show approved videos to regular users
+      if (video.status !== "approved") {
+        return res.status(404).json({ message: "Video not found" });
+      }
+      
       res.json(video);
     } catch (error) {
       console.error("Get video error:", error);
