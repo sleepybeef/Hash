@@ -4,3 +4,12 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+# Ignore environment files
+.env
+client/.env
+*.env
+# Ignore log files
+*.log
+# Ignore uploads and build artifacts
+uploads/
+build/
