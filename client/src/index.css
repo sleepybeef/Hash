@@ -1,5 +1,31 @@
+
 @import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+body {
+	font-family: 'Inter', sans-serif;
+	background: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
+	min-height: 100vh;
+}
+
+.rounded-xl, .rounded-lg, .rounded-md, .rounded {
+	border-radius: 1rem !important;
+}
+
+.modern-btn {
+	background: linear-gradient(90deg, #6366f1 0%, #a78bfa 100%);
+	color: #fff;
+	border: none;
+	border-radius: 9999px;
+	padding: 0.75rem 1.5rem;
+	font-weight: 600;
+	box-shadow: 0 2px 8px rgba(79,70,229,0.15);
+	transition: transform 0.1s, box-shadow 0.1s;
+}
+.modern-btn:hover {
+	transform: translateY(-2px) scale(1.03);
+	box-shadow: 0 4px 16px rgba(147,51,234,0.18);
+}

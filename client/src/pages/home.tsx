@@ -56,7 +56,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen" style={{ background: "linear-gradient(135deg, #4f46e5 0%, #9333ea 100%)" }}>
       <Navigation 
         user={currentUser} 
         onOpenUpload={() => setShowUploadModal(true)}
@@ -68,7 +68,7 @@ export default function Home() {
 
       <div className="flex pt-16 pb-20 md:pb-0">
         {/* Sidebar - Desktop Only */}
-        <aside className="hidden md:block w-64 fixed left-0 top-16 bottom-0 bg-card border-r border-border overflow-y-auto hide-scrollbar">
+  <aside className="hidden md:block w-64 fixed left-0 top-16 bottom-0 bg-white/10 border-r border-white/20 overflow-y-auto hide-scrollbar rounded-xl shadow-lg">
           <div className="p-4 space-y-6">
             {/* Main Navigation */}
             <nav className="space-y-2">
@@ -140,7 +140,7 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             {/* Hero Section */}
             <section className="mb-8">
-              <div className="bg-gradient-to-r from-primary to-accent rounded-xl p-8 text-center">
+              <div className="rounded-xl p-8 text-center" style={{ background: "linear-gradient(90deg, #6366f1 0%, #a78bfa 100%)" }}>
                 <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
                   Decentralized Video Platform
                 </h1>
@@ -150,7 +150,7 @@ export default function Home() {
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button 
                     onClick={() => setShowWorldIdModal(true)}
-                    className="bg-white text-primary hover:bg-white/90 px-6 py-3"
+                    className="modern-btn"
                     data-testid="button-verify-world-id"
                   >
                     <i className="fas fa-globe mr-2"></i>
@@ -158,7 +158,7 @@ export default function Home() {
                   </Button>
                   <Button 
                     variant="outline" 
-                    className="border-white/30 text-white hover:bg-white/10 px-6 py-3"
+                    className="modern-btn ml-2"
                     data-testid="button-watch-guest"
                   >
                     <i className="fas fa-play mr-2"></i>
@@ -221,7 +221,7 @@ export default function Home() {
                 <div className="text-center mt-8">
                   <Button 
                     variant="secondary" 
-                    className="px-6 py-3"
+                    className="modern-btn"
                     data-testid="button-load-more"
                   >
                     <i className="fas fa-refresh mr-2"></i>
@@ -235,7 +235,7 @@ export default function Home() {
       </div>
 
       {/* Mobile Bottom Navigation */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border md:hidden">
+  <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/10 border-t border-white/20 md:hidden rounded-t-xl shadow-lg">
         <div className="flex items-center justify-around py-3">
           <button className="flex flex-col items-center space-y-1 text-primary" data-testid="mobile-nav-home">
             <i className="fas fa-home text-lg"></i>
