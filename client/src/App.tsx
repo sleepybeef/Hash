@@ -1,31 +1,61 @@
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import Home from "@/pages/home";
-import ModeratorDashboard from "@/pages/moderator-dashboard";
-import NotFound from "@/pages/not-found";
+import { useEffect, useState } from "react";
+import { supabase } from "./supabase";
 
-function Router() {
-  return (
-    <Switch>
-      <Route path="/" component={Home} />
-      <Route path="/moderation" component={ModeratorDashboard} />
-      <Route component={NotFound} />
-    </Switch>
-  );
+interface User {
+  id: string;
+  username: string;
+  world_id: string;
+  avatar?: string | null;
+  is_verified: boolean;
+  created_at: string;
 }
 
-function App() {
+export default function App() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    console.log("App component mounted");
+    console.log("Vite env:", import.meta.env);
+
+    async function fetchUsers() {
+      try {
+        const { data, error } = await supabase.from<User>("users").select("*");
+        console.log("Supabase fetch result:", { data, error });
+
+        if (error) throw error;
+        setUsers(data ?? []);
+      } catch (err: any) {
+        console.error("Error fetching users:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchUsers();
+  }, []);
+
+  if (loading) return <div className="p-4">Loading users...</div>;
+  if (error) return <div className="p-4 text-red-500">Error: {error}</div>;
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Users</h1>
+      {users.length === 0 ? (
+        <p>No users found</p>
+      ) : (
+        <ul className="space-y-2">
+          {users.map((u) => (
+            <li key={u.id} className="border p-2 rounded">
+              <span className="font-semibold">{u.username}</span>{" "}
+              {u.is_verified && <span className="text-green-500">✅ Verified</span>}
+              <div className="text-sm text-gray-500">{u.world_id}</div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
-
-export default App;

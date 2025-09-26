@@ -7,6 +7,7 @@ import WorldIdVerify from "@/components/world-id-verify";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "wouter";
+import { UsersTableSample } from "@/components/users-table-sample";
 
 type Video = {
   id: string;
@@ -61,6 +62,9 @@ export default function Home() {
         onOpenUpload={() => setShowUploadModal(true)}
         onOpenVerification={() => setShowWorldIdModal(true)}
       />
+      <div className="p-4">
+        <UsersTableSample />
+      </div>
 
       <div className="flex pt-16 pb-20 md:pb-0">
         {/* Sidebar - Desktop Only */}
