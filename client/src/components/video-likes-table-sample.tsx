@@ -1,31 +1,30 @@
-
 import { useEffect, useState } from "react";
 import { supabase } from "../lib/supabase";
 
-export function UsersTableSample() {
-  const [users, setUsers] = useState<any[]>([]);
+export function VideoLikesTableSample() {
+  const [videoLikes, setVideoLikes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     supabase
-      .from("users")
+      .from("video_likes")
       .select("*")
       .then(({ data, error }) => {
-        console.log("Supabase users response:", { data, error });
+        console.log("Supabase video_likes response:", { data, error });
         if (error) setError(error.message);
-        else setUsers(data || []);
+        else setVideoLikes(data || []);
         setLoading(false);
       });
   }, []);
 
-  if (loading) return <div>Loading users...</div>;
+  if (loading) return <div>Loading video likes...</div>;
   if (error) return <div>Error: {error}</div>;
 
   return (
     <div>
-      <h2>Users Table Data</h2>
-      <pre>{JSON.stringify(users, null, 2)}</pre>
+      <h2>Video Likes Table Data</h2>
+      <pre>{JSON.stringify(videoLikes, null, 2)}</pre>
     </div>
   );
 }
