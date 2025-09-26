@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+console.log("Home.tsx loaded");
+import { supabase } from "../lib/supabase";
+import { useState, useEffect } from "react";
 import Navigation from "@/components/navigation";
 import VideoCard from "@/components/video-card";
 import UploadModal from "@/components/upload-modal";
@@ -8,6 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Link } from "wouter";
 import { UsersTableSample } from "@/components/users-table-sample";
+import { SubscriptionsTableSample } from "@/components/subscriptions-table-sample";
+import { VideoLikesTableSample } from "@/components/video-likes-table-sample";
+import { VideoViewsTableSample } from "@/components/video-views-table-sample";
+import { VideosTableSample } from "@/components/videos-table-sample";
 
 type Video = {
   id: string;
@@ -42,13 +47,29 @@ type Video = {
 };
 
 export default function Home() {
+  console.log("Home component loaded");
+  console.log("Home page loaded");
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showWorldIdModal, setShowWorldIdModal] = useState(false);
   const [currentUser, setCurrentUser] = useState<any>(null);
 
-  const { data: videos = [], isLoading } = useQuery<Video[]>({
-    queryKey: ["/api/videos"],
-  });
+  const [videos, setVideos] = useState<Video[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from("videos")
+      .select("*")
+      .then(({ data, error }) => {
+        if (error) {
+          setError(error.message);
+        } else {
+          setVideos(data ?? []);
+        }
+        setIsLoading(false);
+      });
+  }, []);
 
   const handleWorldIdVerified = (user: any) => {
     setCurrentUser(user);
@@ -62,8 +83,12 @@ export default function Home() {
         onOpenUpload={() => setShowUploadModal(true)}
         onOpenVerification={() => setShowWorldIdModal(true)}
       />
-      <div className="p-4">
+      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-6">
         <UsersTableSample />
+        <SubscriptionsTableSample />
+        <VideoLikesTableSample />
+        <VideoViewsTableSample />
+        <VideosTableSample />
       </div>
 
       <div className="flex pt-16 pb-20 md:pb-0">
