@@ -1,24 +1,13 @@
 import express from "express";
-import path from "path";
 import dotenv from "dotenv";
-import { fileURLToPath } from "url";
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT ? Number(process.env.PORT) : 5000;
+const PORT = 5000; // Force backend to use port 5000
 
-// ES module equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// Serve static files from the Vite build output
-app.use(express.static(path.resolve(__dirname, "../dist/public")));
-
-// Fallback route: all other requests serve index.html
-app.get("*", (_req, res) => {
-  res.sendFile(path.resolve(__dirname, "../dist/public/index.html"));
-});
+// Example API route (optional)
+// app.get("/api/health", (_req, res) => res.json({ ok: true }));
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
