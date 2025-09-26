@@ -11,6 +11,7 @@ export const users = pgTable("users", {
   isModerator: boolean("is_moderator").notNull().default(false),
   avatar: text("avatar"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastUsernameChange: timestamp("last_username_change")
 });
 
 export const videos = pgTable("videos", {
