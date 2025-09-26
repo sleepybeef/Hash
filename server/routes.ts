@@ -1,5 +1,5 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
+import type { Express, Request, Response } from "express";
+import { createServer, Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertVideoSchema, insertVideoLikeSchema, insertSubscriptionSchema, insertVideoViewSchema } from "@shared/schema";
 import multer from "multer";
@@ -15,39 +15,104 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Username change route (limit: once per 30 days, must be unique)
+  app.post("/api/user/:id/username", async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.id;
+      const { newUsername } = req.body;
+      if (!newUsername || typeof newUsername !== "string") {
+        return res.status(400).json({ message: "New username required" });
+      }
+      // Get user
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      // Check lastUsernameChange
+      if (user.lastUsernameChange) {
+        const now = new Date();
+        const lastChange = new Date(user.lastUsernameChange);
+        const diffDays = (now.getTime() - lastChange.getTime()) / (1000 * 60 * 60 * 24);
+        if (diffDays < 30) {
+          return res.status(403).json({ message: "You can only change your username once every 30 days." });
+        }
+      }
+      // Check if username is taken
+      const taken = await storage.getUserByUsername(newUsername);
+      if (taken && taken.id !== userId) {
+        return res.status(409).json({ message: "Username already taken." });
+      }
+      // Update username
+      const updated = await storage.updateUsername(userId, newUsername);
+      res.json({ message: "Username updated successfully.", user: updated });
+    } catch (error) {
+      console.error("Username update error:", error);
+      res.status(500).json({ message: "Failed to update username" });
+    }
+  });
+  // Get user by World ID (for World ID sign-in flow)
+  app.get("/api/user/by-worldid/:worldId", async (req: Request, res: Response) => {
+    try {
+      const user = await storage.getUserByWorldId(req.params.worldId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      res.json(user);
+    } catch (error) {
+      console.error("Get user by World ID error:", error);
+      res.status(500).json({ message: "Failed to get user" });
+    }
+  });
   // World ID verification and user management
-  app.post("/api/auth/verify", async (req, res) => {
+  app.post("/api/auth/verify", async (req: Request, res: Response) => {
     try {
       const { worldId, username } = req.body;
-      
-      if (!worldId || !username) {
-        return res.status(400).json({ message: "World ID and username are required" });
+
+      if (!worldId) {
+        return res.status(400).json({ message: "World ID is required" });
       }
 
       // Check if user already exists
       let user = await storage.getUserByWorldId(worldId);
-      
-      if (!user) {
-        // Create new user
-        const userData = insertUserSchema.parse({
-          worldId,
-          username,
-          isVerified: true, // Assume World ID verification is valid
-        });
-        user = await storage.createUser(userData);
-      } else {
-        // Update verification status
-        user = await storage.updateUserVerification(user.id, true);
+
+      if (user) {
+        // User exists, always return user and ignore any new username
+        if (username && username !== user.username) {
+          // If a different username is provided, reject the request
+          return res.status(403).json({ message: "World ID already linked to a username. Cannot create another account." });
+        }
+        if (!user.isVerified) {
+          user = await storage.updateUserVerification(user.id, true);
+        }
+        console.log("[API] /api/auth/verify response (existing user):", user);
+        return res.json(user);
       }
 
+      // If no user, require username for account creation
+      if (!username) {
+        return res.status(400).json({ message: "Username is required for new account" });
+      }
+
+      // Create new user
+      const userData = insertUserSchema.parse({
+        worldId,
+        username,
+        isVerified: true, // Assume World ID verification is valid
+      });
+      user = await storage.createUser(userData);
+      console.log("[API] /api/auth/verify response (new user):", user);
       res.json(user);
     } catch (error) {
+      // If duplicate username or worldId, return a clear error
+      if (error && typeof error === 'object' && 'code' in error && error.code === '23505') { // Postgres unique violation
+        return res.status(409).json({ message: "World ID or username already exists" });
+      }
       console.error("Verification error:", error);
       res.status(500).json({ message: "Verification failed" });
     }
   });
 
-  app.get("/api/user/:id", async (req, res) => {
+  app.get("/api/user/:id", async (req: Request, res: Response) => {
     try {
       const user = await storage.getUser(req.params.id);
       if (!user) {
@@ -61,7 +126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Video operations
-  app.post("/api/videos/upload", upload.single('video'), async (req, res) => {
+  app.post("/api/videos/upload", upload.single('video'), async (req: Request, res: Response) => {
     try {
       const { title, description, category, tags, visibility, creatorId } = req.body;
       const file = req.file;
@@ -104,7 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/videos", async (req, res) => {
+  app.get("/api/videos", async (req: Request, res: Response) => {
     try {
       const limit = parseInt(req.query.limit as string) || 20;
       const offset = parseInt(req.query.offset as string) || 0;
@@ -117,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/videos/:id", async (req, res) => {
+  app.get("/api/videos/:id", async (req: Request, res: Response) => {
     try {
       const video = await storage.getVideoWithCreator(req.params.id);
       if (!video) {
@@ -136,7 +201,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/videos/:id/view", async (req, res) => {
+  app.post("/api/videos/:id/view", async (req: Request, res: Response) => {
     try {
       const videoId = req.params.id;
       const viewerIp = req.ip;
@@ -155,7 +220,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Video interactions (likes, subscriptions)
-  app.post("/api/videos/:id/like", async (req, res) => {
+  app.post("/api/videos/:id/like", async (req: Request, res: Response) => {
     try {
       const { userId, isLike } = req.body;
       const videoId = req.params.id;
@@ -193,7 +258,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users/:id/subscribe", async (req, res) => {
+  app.post("/api/users/:id/subscribe", async (req: Request, res: Response) => {
     try {
       const { subscriberId } = req.body;
       const creatorId = req.params.id;
@@ -223,7 +288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/:id/subscriptions", async (req, res) => {
+  app.get("/api/users/:id/subscriptions", async (req: Request, res: Response) => {
     try {
       const subscriptions = await storage.getUserSubscriptions(req.params.id);
       res.json(subscriptions);
@@ -234,7 +299,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Moderation routes
-  app.get("/api/moderation/queue", async (req, res) => {
+  app.get("/api/moderation/queue", async (req: Request, res: Response) => {
     try {
       // Only allow moderators
       const { userId } = req.query;
@@ -255,9 +320,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/moderation/videos/:id/approve", async (req, res) => {
+  app.post("/api/moderation/videos/:id/approve", async (req: Request, res: Response) => {
     try {
-      const { moderatorId, ipfsHash, thumbnailHash } = req.body;
+      const { moderatorId } = req.body;
       const videoId = req.params.id;
 
       // Validate moderator
@@ -266,22 +331,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Moderator access required" });
       }
 
-      // Approve video
-      await storage.updateVideoStatus(videoId, "approved", moderatorId);
-      
-      // Update IPFS hash if provided
-      if (ipfsHash) {
-        await storage.updateVideoIPFS(videoId, ipfsHash, thumbnailHash);
+      // Get video info
+      const video = await storage.getVideo(videoId);
+      if (!video) {
+        return res.status(404).json({ message: "Video not found" });
+      }
+      if (video.status !== "pending") {
+        return res.status(400).json({ message: "Video is not pending moderation" });
       }
 
-      res.json({ message: "Video approved" });
+      // Upload video file to Pinata
+      const videoPath = path.join(process.cwd(), 'uploads', `${videoId}`); // assumes file is named by id
+      let ipfsHash = null;
+      try {
+        const { uploadFileToPinata } = await import('./pinata');
+        ipfsHash = await uploadFileToPinata(videoPath);
+      } catch (err) {
+        console.error('Pinata upload error:', err);
+        return res.status(500).json({ message: 'Failed to upload to IPFS' });
+      }
+
+      // Approve video and save IPFS hash
+      await storage.updateVideoStatus(videoId, "approved", moderatorId);
+      await storage.updateVideoIPFS(videoId, ipfsHash);
+
+      // TODO: Notify user (email, push, etc.)
+
+      res.json({ message: "Video approved", ipfsHash });
     } catch (error) {
       console.error("Approve video error:", error);
       res.status(500).json({ message: "Failed to approve video" });
     }
   });
 
-  app.post("/api/moderation/videos/:id/reject", async (req, res) => {
+  app.post("/api/moderation/videos/:id/reject", async (req: Request, res: Response) => {
     try {
       const { moderatorId, reason } = req.body;
       const videoId = req.params.id;
@@ -302,7 +385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/moderation/stats", async (req, res) => {
+  app.get("/api/moderation/stats", async (req: Request, res: Response) => {
     try {
       const { userId } = req.query;
       
@@ -317,6 +400,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get moderation stats error:", error);
       res.status(500).json({ message: "Failed to get moderation stats" });
+    }
+  });
+
+  app.post("/api/user/:id/username", async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.id;
+      const { newUsername } = req.body;
+      if (!newUsername || typeof newUsername !== "string") {
+        return res.status(400).json({ message: "New username required" });
+      }
+      // Get user
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      // Check lastUsernameChange
+      if (user.lastUsernameChange) {
+        const now = new Date();
+        const lastChange = new Date(user.lastUsernameChange);
+        const diffDays = (now.getTime() - lastChange.getTime()) / (1000 * 60 * 60 * 24);
+        if (diffDays < 30) {
+          return res.status(403).json({ message: "You can only change your username once every 30 days." });
+        }
+      }
+      // Check if username is taken
+      const taken = await storage.getUserByUsername(newUsername);
+      if (taken && taken.id !== userId) {
+        return res.status(409).json({ message: "Username already taken." });
+      }
+      // Update username
+      const updated = await storage.updateUsername(userId, newUsername);
+      res.json({ message: "Username updated successfully.", user: updated });
+    } catch (error) {
+      console.error("Username update error:", error);
+      res.status(500).json({ message: "Failed to update username" });
     }
   });
 

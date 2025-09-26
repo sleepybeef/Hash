@@ -58,40 +58,52 @@ export default function ModeratorDashboard() {
   });
 
   const { data: pendingVideos = [] } = useQuery<Video[]>({
-    queryKey: ["/api/moderation/queue", { userId: currentUser?.id }],
+    queryKey: ["/api/moderation/pending"],
+    queryFn: async () => {
+      const res = await fetch("/api/moderation/pending");
+      if (!res.ok) throw new Error("Failed to fetch pending videos");
+      return res.json();
+    },
     enabled: !!currentUser?.isModerator,
   });
 
+  const [approvedCID, setApprovedCID] = useState<string | null>(null);
   const approveMutation = useMutation({
-    mutationFn: async ({ videoId, ipfsHash }: { videoId: string; ipfsHash?: string }) => {
-      return apiRequest("POST", `/api/moderation/videos/${videoId}/approve`, {
-        moderatorId: currentUser.id,
-        ipfsHash,
-        thumbnailHash: "thumbnail-hash-placeholder",
+    mutationFn: async ({ videoId }: { videoId: string }) => {
+      const res = await fetch(`/api/moderation/videos/${videoId}/approve`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ moderatorId: currentUser.id }),
       });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.message || "Failed to approve video");
+      }
+      return res.json();
     },
-    onSuccess: () => {
-      toast({ title: "Video approved successfully" });
-      queryClient.invalidateQueries({ queryKey: ["/api/moderation/queue"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/moderation/stats"] });
+    onSuccess: (data) => {
+      toast({ title: "Video approved and uploaded to IPFS!" });
+      setApprovedCID(data.ipfsHash);
+      queryClient.invalidateQueries({ queryKey: ["/api/moderation/pending"] });
       setSelectedVideo(null);
     },
-    onError: () => {
-      toast({ title: "Failed to approve video", variant: "destructive" });
+    onError: (error: any) => {
+      toast({ title: "Failed to approve video", description: error.message, variant: "destructive" });
     },
   });
 
   const rejectMutation = useMutation({
     mutationFn: async ({ videoId, reason }: { videoId: string; reason: string }) => {
-      return apiRequest("POST", `/api/moderation/videos/${videoId}/reject`, {
+      return apiRequest("POST", "/api/moderation/review", {
+        videoId,
+        status: "rejected",
         moderatorId: currentUser.id,
-        reason,
+        rejectionReason: reason,
       });
     },
     onSuccess: () => {
       toast({ title: "Video rejected" });
-      queryClient.invalidateQueries({ queryKey: ["/api/moderation/queue"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/moderation/stats"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/moderation/pending"] });
       setSelectedVideo(null);
       setRejectionReason("");
     },
@@ -316,10 +328,7 @@ export default function ModeratorDashboard() {
                         {/* Action Buttons */}
                         <div className="flex items-center space-x-4 pt-4">
                           <Button
-                            onClick={() => approveMutation.mutate({ 
-                              videoId: selectedVideo.id,
-                              ipfsHash: `ipfs-${selectedVideo.id}` // Mock IPFS hash
-                            })}
+                            onClick={() => approveMutation.mutate({ videoId: selectedVideo.id })}
                             disabled={approveMutation.isPending}
                             className="bg-green-600 hover:bg-green-700 text-white"
                             data-testid="button-approve"
@@ -327,7 +336,6 @@ export default function ModeratorDashboard() {
                             <i className="fas fa-check mr-2"></i>
                             {approveMutation.isPending ? "Approving..." : "Approve"}
                           </Button>
-                          
                           <Button
                             onClick={() => rejectMutation.mutate({ 
                               videoId: selectedVideo.id,
@@ -340,7 +348,6 @@ export default function ModeratorDashboard() {
                             <i className="fas fa-times mr-2"></i>
                             {rejectMutation.isPending ? "Rejecting..." : "Reject"}
                           </Button>
-                          
                           <Button 
                             variant="outline"
                             data-testid="button-flag"
@@ -359,6 +366,12 @@ export default function ModeratorDashboard() {
                     <div className="text-center py-12 text-muted-foreground">
                       <i className="fas fa-mouse-pointer text-4xl mb-4"></i>
                       <p>Select a video from the queue to review</p>
+                      {approvedCID && (
+                        <div className="mt-6">
+                          <p className="font-bold text-green-600">Video uploaded to IPFS!</p>
+                          <p className="text-sm">CID: <span className="font-mono bg-muted px-2 py-1 rounded">{approvedCID}</span></p>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

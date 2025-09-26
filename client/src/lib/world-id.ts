@@ -1,3 +1,15 @@
+import { useState, useEffect } from "react";
+// Simple hook to check World ID verification status
+export function useWorldId() {
+  // In a real app, this would use context or auth state
+  const [isVerified, setIsVerified] = useState(false);
+  useEffect(() => {
+    // TODO: Replace with real World ID check
+    // For demo, always false (guest)
+    setIsVerified(false);
+  }, []);
+  return { isVerified };
+}
 // World ID SDK integration
 // This would normally use @worldcoin/id package
 

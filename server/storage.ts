@@ -22,8 +22,10 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByWorldId(worldId: string): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserVerification(id: string, isVerified: boolean): Promise<User>;
+  updateUsername(id: string, newUsername: string): Promise<User>;
 
   // Video operations
   createVideo(video: InsertVideo): Promise<Video>;
@@ -69,6 +71,11 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -83,6 +90,16 @@ export class DatabaseStorage implements IStorage {
       .set({ isVerified })
       .where(eq(users.id, id))
       .returning();
+    return user;
+  }
+
+  async updateUsername(id: string, newUsername: string): Promise<User> {
+    const now = new Date();
+    await db.update(users)
+      .set({ username: newUsername, lastUsernameChange: now })
+      .where(eq(users.id, id));
+    const user = await this.getUser(id);
+    if (!user) throw new Error("User not found after username update");
     return user;
   }
 
@@ -130,6 +147,7 @@ export class DatabaseStorage implements IStorage {
           isModerator: users.isModerator,
           avatar: users.avatar,
           createdAt: users.createdAt,
+          lastUsernameChange: users.lastUsernameChange,
         }
       })
       .from(videos)
@@ -170,6 +188,7 @@ export class DatabaseStorage implements IStorage {
           isModerator: users.isModerator,
           avatar: users.avatar,
           createdAt: users.createdAt,
+          lastUsernameChange: users.lastUsernameChange,
         }
       })
       .from(videos)
@@ -213,6 +232,7 @@ export class DatabaseStorage implements IStorage {
           isModerator: users.isModerator,
           avatar: users.avatar,
           createdAt: users.createdAt,
+          lastUsernameChange: users.lastUsernameChange,
         }
       })
       .from(videos)
@@ -358,6 +378,7 @@ export class DatabaseStorage implements IStorage {
           isModerator: users.isModerator,
           avatar: users.avatar,
           createdAt: users.createdAt,
+          lastUsernameChange: users.lastUsernameChange,
         }
       })
       .from(subscriptions)
