@@ -5,6 +5,7 @@ import { insertUserSchema, insertVideoSchema, insertVideoLikeSchema, insertSubsc
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import bcrypt from "bcryptjs";
 
 // Configure multer for file uploads
 const upload = multer({
@@ -15,6 +16,23 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Designate user as moderator (manual/admin action)
+  app.post("/api/user/:id/moderator", async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.id;
+      // Optionally, add authentication/authorization here for admin-only access
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      await storage.updateUserVerification(userId, user.isVerified); // Ensure user exists
+      await storage.setModerator(userId, true);
+      res.json({ message: "User designated as moderator." });
+    } catch (error) {
+      console.error("Set moderator error:", error);
+      res.status(500).json({ message: "Failed to set moderator" });
+    }
+  });
   // Username change route (limit: once per 30 days, must be unique)
   app.post("/api/user/:id/username", async (req: Request, res: Response) => {
     try {
@@ -403,38 +421,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/user/:id/username", async (req: Request, res: Response) => {
+  // Get user by username (for admin UI)
+  app.get("/api/user/by-username/:username", async (req: Request, res: Response) => {
     try {
-      const userId = req.params.id;
-      const { newUsername } = req.body;
-      if (!newUsername || typeof newUsername !== "string") {
-        return res.status(400).json({ message: "New username required" });
-      }
-      // Get user
-      const user = await storage.getUser(userId);
+      const username = req.params.username;
+      console.log(`[API] Searching for username:`, username);
+      const user = await storage.getUserByUsernameCI(username);
+      console.log(`[API] Query result:`, user);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      // Check lastUsernameChange
-      if (user.lastUsernameChange) {
-        const now = new Date();
-        const lastChange = new Date(user.lastUsernameChange);
-        const diffDays = (now.getTime() - lastChange.getTime()) / (1000 * 60 * 60 * 24);
-        if (diffDays < 30) {
-          return res.status(403).json({ message: "You can only change your username once every 30 days." });
-        }
-      }
-      // Check if username is taken
-      const taken = await storage.getUserByUsername(newUsername);
-      if (taken && taken.id !== userId) {
-        return res.status(409).json({ message: "Username already taken." });
-      }
-      // Update username
-      const updated = await storage.updateUsername(userId, newUsername);
-      res.json({ message: "Username updated successfully.", user: updated });
+      res.json(user);
     } catch (error) {
-      console.error("Username update error:", error);
-      res.status(500).json({ message: "Failed to update username" });
+      console.error("Get user by username error:", error);
+      res.status(500).json({ message: "Failed to get user" });
+    }
+  });
+
+  // Set moderator password (hash and store)
+  app.post("/api/user/:id/mod-password", async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.id;
+      const { password } = req.body;
+      if (!password || password.length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters." });
+      }
+      const hash = await bcrypt.hash(password, 10);
+      await storage.setModeratorPassword(userId, hash);
+      res.json({ message: "Moderator password set." });
+    } catch (error) {
+      console.error("Set moderator password error:", error);
+      res.status(500).json({ message: "Failed to set moderator password" });
+    }
+  });
+
+  // Verify moderator password
+  app.post("/api/user/:id/verify-mod-password", async (req: Request, res: Response) => {
+    try {
+      const userId = req.params.id;
+      const { password } = req.body;
+      const user = await storage.getUser(userId);
+      if (!user || !user.mod_password) {
+        return res.status(404).json({ message: "Moderator password not set." });
+      }
+      const valid = await bcrypt.compare(password, user.mod_password);
+      if (!valid) {
+        return res.status(403).json({ message: "Incorrect password." });
+      }
+      res.json({ message: "Password verified." });
+    } catch (error) {
+      console.error("Verify moderator password error:", error);
+      res.status(500).json({ message: "Failed to verify moderator password" });
     }
   });
 

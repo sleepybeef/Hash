@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
-export type AuthUser = { username: string; id: string; isVerified: boolean } | null;
+export type AuthUser = { username: string; id: string; isVerified: boolean; isModerator: boolean } | null;
 
 const AuthContext = createContext<{
   user: AuthUser;

@@ -1,5 +1,25 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');
+/* Remove body background when moderator-gradient-bg is present */
+	background: linear-gradient(135deg, #1e3a8a 0%, #e5e7eb 100%) !important;
+	background-color: #1e3a8a !important;
+
+
+body {
+}
+
+/* Force blue-grey gradient for moderator pages */
+.moderator-gradient-bg {
+	background: linear-gradient(135deg, #1e3a8a 0%, #e5e7eb 100%) !important;
+	background-color: #1e3a8a !important;
+	min-height: 100vh;
+	width: 100vw;
+}
+
+/* Specific background for moderator dashboard */
+.moderator-dashboard-bg {
+	background: linear-gradient(135deg, #1e3a8a 0%, #e5e7eb 100%) !important;
+	min-height: 100vh;
+}
 
 @tailwind base;
 @tailwind components;
@@ -7,7 +27,6 @@
 
 body {
 	font-family: 'Inter', sans-serif;
-	background: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
 	min-height: 100vh;
 }
 
