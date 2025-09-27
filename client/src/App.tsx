@@ -1,4 +1,5 @@
 import Home from "./pages/home";
+import ModerateVideoPage from "./pages/moderate";
 import AdminPage from "./pages/admin";
 import SubscriptionsPage from "./pages/subscriptions";
 import MyProfilePage from "./pages/my-profile";
@@ -25,6 +26,7 @@ export default function App() {
               <Route path="/user/:id" element={<UserProfilePage />} />
               <Route path="/admin" element={<AdminPage />} />
               <Route path="/moderator-dashboard" element={<ModeratorDashboard />} />
+              <Route path="/moderate/:id" element={<ModerateVideoPage />} />
             </Routes>
           </BrowserRouter>
         </AuthProvider>

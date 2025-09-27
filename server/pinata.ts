@@ -7,8 +7,12 @@ const pinata = new PinataClient({
   pinataSecretApiKey: process.env.VITE_PINATA_API_SECRET || process.env.PINATA_API_SECRET,
 });
 
-export async function uploadFileToPinata(filePath: string) {
+export async function uploadFileToPinata(filePath: string, options: { name?: string } = {}) {
   const stream = fs.createReadStream(filePath);
-  const result = await pinata.pinFileToIPFS(stream);
+  const pinataOptions: any = {};
+  if (options.name) {
+    pinataOptions.pinataMetadata = { name: options.name };
+  }
+  const result = await pinata.pinFileToIPFS(stream, pinataOptions);
   return result.IpfsHash;
 }

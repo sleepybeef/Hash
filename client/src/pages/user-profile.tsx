@@ -30,7 +30,7 @@ export default function UserProfilePage() {
   setProfile(data);
       setEditUsername(data?.username || "");
       setEditBio(data?.bio || "");
-      const { data: vids } = await supabase.from("videos").select("*").eq("creatorId", id);
+  const { data: vids } = await supabase.from("videos").select("*").eq("creator_id", id);
       setVideos(vids || []);
       setLoading(false);
     }
@@ -147,10 +147,10 @@ export default function UserProfilePage() {
                   <li key={video.id} className="p-4 rounded-xl shadow bg-white flex flex-col gap-2">
                     <strong className="text-lg font-semibold mb-1">{video.title}</strong>
                     <div className="text-gray-700 mb-1">{video.description}</div>
-                    {video.ipfsHash && (
+                    {video.ipfs_hash && (
                       <video
                         controls
-                        src={`https://lavender-eldest-camel-675.mypinata.cloud/ipfs/${video.ipfsHash}`}
+                        src={`https://lavender-eldest-camel-675.mypinata.cloud/ipfs/${video.ipfs_hash}`}
                         className="mt-2 w-full max-w-md rounded shadow"
                       >
                         Your browser does not support the video tag.

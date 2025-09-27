@@ -47,17 +47,37 @@ type ModerationStats = {
 };
 
 export default function ModeratorDashboard() {
+  // Force refetch of moderation queue on mount
+  React.useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ["/api/moderation/queue"] });
+  }, []);
   const { user: currentUser, setUser } = useAuth();
+  // Store moderator user in localStorage on sign-in
+  React.useEffect(() => {
+    if (currentUser && currentUser.isModerator) {
+      localStorage.setItem('user', JSON.stringify(currentUser));
+    }
+  }, [currentUser]);
   const handleSignOut = () => {
     setUser(currentUser ? { ...currentUser, isModerator: false } : null);
-    window.location.href = "/admin";
+    localStorage.removeItem("lastModPasswordVerified");
+    window.location.href = "/";
   };
   useEffect(() => {
     document.body.classList.add('moderator-gradient-bg');
+    // Check mod password expiry
+    const lastModPasswordVerified = localStorage.getItem("lastModPasswordVerified");
+    if (currentUser?.isModerator && lastModPasswordVerified) {
+      if (Date.now() - Number(lastModPasswordVerified) > 1800000) {
+        setUser(currentUser ? { ...currentUser, isModerator: false } : null);
+        localStorage.removeItem("lastModPasswordVerified");
+        window.location.href = "/admin";
+      }
+    }
     return () => {
       document.body.classList.remove('moderator-gradient-bg');
     };
-  }, []);
+  }, [currentUser, setUser]);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   // removed duplicate declaration
@@ -65,14 +85,21 @@ export default function ModeratorDashboard() {
   const queryClient = useQueryClient();
 
   const { data: stats } = useQuery<ModerationStats>({
-    queryKey: ["/api/moderation/stats", { userId: currentUser?.id }],
+    queryKey: ["/api/moderation/stats", currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.isModerator || !currentUser?.id) return { pending: 0, approved: 0, rejected: 0 };
+      const res = await fetch(`/api/moderation/stats?userId=${currentUser.id}`);
+      if (!res.ok) throw new Error("Failed to fetch moderation stats");
+      return res.json();
+    },
     enabled: !!currentUser?.isModerator,
   });
 
   const { data: pendingVideos = [] } = useQuery<Video[]>({
-    queryKey: ["/api/moderation/pending"],
+    queryKey: ["/api/moderation/queue", { userId: currentUser?.id }],
     queryFn: async () => {
-      const res = await fetch("/api/moderation/pending");
+      if (!currentUser?.isModerator || !currentUser?.id) return [];
+      const res = await fetch(`/api/moderation/queue?userId=${currentUser.id}`);
       if (!res.ok) throw new Error("Failed to fetch pending videos");
       return res.json();
     },
@@ -172,19 +199,6 @@ export default function ModeratorDashboard() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center space-x-3">
-                <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
-                <div>
-                  <p className="text-2xl font-bold" data-testid="stat-pending">
-                    {stats?.pending || 0}
-                  </p>
-                  <p className="text-sm text-muted-foreground">Pending</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center space-x-3">
                 <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                 <div>
                   <p className="text-2xl font-bold" data-testid="stat-approved">
@@ -210,12 +224,12 @@ export default function ModeratorDashboard() {
           </Card>
         </div>
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Video Queue */}
-          <div className="lg:col-span-1">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Moderation Queue: All pending videos */}
+          <div className="lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle>Pending Reviews ({pendingVideos.length})</CardTitle>
+                <CardTitle>Moderation Queue ({pendingVideos.length})</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 max-h-96 overflow-y-auto">
@@ -228,12 +242,7 @@ export default function ModeratorDashboard() {
                     pendingVideos.map((video) => (
                       <div
                         key={video.id}
-                        onClick={() => setSelectedVideo(video)}
-                        className={`border border-border rounded-lg p-3 cursor-pointer transition-colors ${
-                          selectedVideo?.id === video.id 
-                            ? 'bg-primary/10 border-primary/50' 
-                            : 'hover:bg-muted/10'
-                        }`}
+                        className={`border border-border rounded-lg p-3 transition-colors hover:bg-muted/10`}
                         data-testid={`video-queue-${video.id}`}
                       >
                         <div className="flex items-start space-x-3">
@@ -246,6 +255,14 @@ export default function ModeratorDashboard() {
                             <p className="text-xs text-muted-foreground">
                               {new Date(video.createdAt).toLocaleDateString()}
                             </p>
+                          </div>
+                          <div className="flex items-center">
+                            <Button
+                              className="ml-4 px-3 py-1 rounded bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
+                              onClick={() => window.location.href = `/moderate/${video.id}`}
+                            >
+                              Review Video
+                            </Button>
                           </div>
                         </div>
                       </div>
@@ -323,57 +340,11 @@ export default function ModeratorDashboard() {
                           data-testid="textarea-rejection-reason"
                         />
                       </div>
-                      {/* Action Buttons */}
-                      <div className="flex items-center space-x-4 pt-4">
-                        <Button
-                          onClick={() => approveMutation.mutate({ videoId: selectedVideo.id })}
-                          disabled={approveMutation.isPending}
-                          className="bg-green-600 hover:bg-green-700 text-white"
-                          data-testid="button-approve"
-                        >
-                          <i className="fas fa-check mr-2"></i>
-                          {approveMutation.isPending ? "Approving..." : "Approve"}
-                        </Button>
-                        <Button
-                          onClick={() => rejectMutation.mutate({ 
-                            videoId: selectedVideo.id,
-                            reason: rejectionReason || "Content does not meet platform guidelines"
-                          })}
-                          disabled={rejectMutation.isPending}
-                          variant="destructive"
-                          data-testid="button-reject"
-                        >
-                          <i className="fas fa-times mr-2"></i>
-                          {rejectMutation.isPending ? "Rejecting..." : "Reject"}
-                        </Button>
-                        <Button 
-                          variant="outline"
-                          data-testid="button-flag"
-                        >
-                          <i className="fas fa-flag mr-2"></i>
-                          Flag for Review
-                        </Button>
-                      </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-            ) : (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center py-12 text-muted-foreground">
-                    <i className="fas fa-mouse-pointer text-4xl mb-4"></i>
-                    <p>Select a video from the queue to review</p>
-                    {approvedCID && (
-                      <div className="mt-6">
-                        <p className="font-bold text-green-600">Video uploaded to IPFS!</p>
-                        <p className="text-sm">CID: <span className="font-mono bg-muted px-2 py-1 rounded">{approvedCID}</span></p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
