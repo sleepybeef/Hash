@@ -17,23 +17,23 @@ type Video = {
   id: string;
   title: string;
   description: string;
-  creatorId: string;
+  creator_id: string;
   category: string;
   tags: string[];
   visibility: string;
   status: string;
-  ipfsHash: string | null;
-  thumbnailHash: string | null;
+  ipfs_hash: string | null;
+  thumbnail_hash: string | null;
   duration: number | null;
-  fileSize: number | null;
-  viewCount: number;
-  likeCount: number;
-  dislikeCount: number;
-  moderatorId: string | null;
-  moderatedAt: string | null;
-  rejectionReason: string | null;
-  createdAt: string;
-  updatedAt: string;
+  file_size: number | null;
+  view_count: number;
+  like_count: number;
+  dislike_count: number;
+  moderator_id: string | null;
+  moderated_at: string | null;
+  rejection_reason: string | null;
+  created_at: string;
+  updated_at: string;
   creator: User;
 };
 
@@ -207,10 +207,10 @@ export default function VideoCard({ video, currentUser }: VideoCardProps) {
         
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span data-testid={`views-${video.id}`}>
-            {video.status === "pending" ? "Moderating..." : `${formatViewCount(video.viewCount)} views`}
+            {video.status === "pending" ? "Moderating..." : `${formatViewCount(video.view_count)} views`}
           </span>
           <span data-testid={`time-${video.id}`}>
-            {formatTimeAgo(video.createdAt)}
+            {formatTimeAgo(video.created_at)}
           </span>
         </div>
         
@@ -226,7 +226,7 @@ export default function VideoCard({ video, currentUser }: VideoCardProps) {
                 data-testid={`like-button-${video.id}`}
               >
                 <i className="fas fa-thumbs-up"></i>
-                <span>{video.likeCount}</span>
+                <span>{video.like_count}</span>
               </Button>
               
               <Button
@@ -238,7 +238,7 @@ export default function VideoCard({ video, currentUser }: VideoCardProps) {
                 data-testid={`dislike-button-${video.id}`}
               >
                 <i className="fas fa-thumbs-down"></i>
-                <span>{video.dislikeCount}</span>
+                <span>{video.dislike_count}</span>
               </Button>
             </div>
             

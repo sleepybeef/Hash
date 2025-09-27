@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../lib/AuthContext";
 import WorldIdVerify from "../components/world-id-verify";
+import UploadModal from "../components/upload-modal";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import CommentSection from "../components/comment-section";
 
 console.log("Home.tsx loaded");
 console.log("VITE_SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL);
@@ -13,7 +15,9 @@ type Video = {
   title: string;
   description: string;
   thumbnail_hash?: string;
-  ipfsHash?: string;
+  ipfs_hash?: string;
+  like_count?: number;
+  view_count?: number;
   // Add other fields as needed
 };
 
@@ -25,6 +29,7 @@ export default function Home() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<Video[]>([]);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const { user, setUser } = useAuth();
 
   const handleVerified = (userData: any) => {
@@ -34,7 +39,10 @@ export default function Home() {
 
   useEffect(() => {
     async function fetchVideos() {
-      const { data, error } = await supabase.from("videos").select("*");
+      const { data, error } = await supabase
+        .from("videos")
+        .select("*")
+        .eq("status", "approved");
       setVideos((data as Video[]) || []);
       setError(error ? { message: error.message } : null);
       setLoading(false);
@@ -49,7 +57,8 @@ export default function Home() {
     const { data, error } = await supabase
       .from("videos")
       .select("*")
-      .or(`title.ilike.%${search}%,description.ilike.%${search}%,id.eq.${search},ipfsHash.eq.${search}`);
+      .eq("status", "approved")
+  .or(`title.ilike.%${search}%,description.ilike.%${search}%,id.eq.${search},ipfs_hash.eq.${search}`);
     setSearchResults((data as Video[]) || []);
     setLoading(false);
   };
@@ -64,9 +73,21 @@ export default function Home() {
           Sign in With World ID
         </button>
       ) : (
-        <div className="absolute top-6 left-6 z-20 px-5 py-2 rounded-full bg-white text-indigo-600 font-semibold shadow border border-indigo-200 transition flex items-center gap-2">
-          <i className="fas fa-user-circle text-indigo-600"></i>
-          {user.username || "User"}
+        <div className="absolute top-6 left-6 z-20 flex flex-col items-start">
+          <div className="px-5 py-2 rounded-full bg-white text-indigo-600 font-semibold shadow border border-indigo-200 transition flex items-center gap-2 mb-2">
+            <i className="fas fa-user-circle text-indigo-600"></i>
+            {user.username || "User"}
+          </div>
+          {user.isVerified && (
+            <button
+              className="px-5 py-2 rounded-full bg-white text-indigo-600 font-semibold shadow border border-indigo-200 transition flex items-center gap-2"
+              style={{ fontFamily: 'Inter, DM Sans, Montserrat, sans-serif' }}
+              onClick={() => setUploadOpen(true)}
+            >
+              <i className="fas fa-upload text-indigo-600"></i>
+              Upload Video
+            </button>
+          )}
         </div>
       )}
       <WorldIdVerify
@@ -74,6 +95,11 @@ export default function Home() {
         onClose={() => setDialogOpen(false)}
         onVerified={handleVerified}
         appId="app_44c44d13873007e69e0abd75b9e7528d"
+      />
+      <UploadModal
+        isOpen={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        currentUser={user}
       />
       <div className="w-full max-w-2xl mx-auto flex flex-col items-center">
         <header className="w-full flex flex-col items-center pb-2">
@@ -139,39 +165,47 @@ export default function Home() {
           ) : (
             <ul className="grid gap-8">
                 {(search ? searchResults : videos).map((video) => (
-                  <li key={video.id} className="p-6 rounded-xl shadow bg-gray-50 flex flex-row gap-4 items-center">
-                    <div className="flex-1 flex flex-col gap-2">
-                      <strong className="text-lg font-semibold mb-2">{video.title}</strong>
-                      <div className="text-gray-700 mb-2">{video.description}</div>
-                      {video.ipfsHash && (
-                        <a
-                          href={`https://lavender-eldest-camel-675.mypinata.cloud/ipfs/${video.ipfsHash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-indigo-600 hover:underline text-xs"
-                        >
-                          View on IPFS
-                        </a>
-                      )}
-                      {video.ipfsHash && (
-                        <video
-                          controls
-                          src={`https://lavender-eldest-camel-675.mypinata.cloud/ipfs/${video.ipfsHash}`}
-                          className="mt-2 w-full max-w-md rounded shadow"
-                        >
-                          Your browser does not support the video tag.
-                        </video>
+                  <li key={video.id} className="p-6 rounded-xl shadow bg-gray-50 flex flex-col gap-4">
+                    <div className="flex flex-row gap-4 items-center">
+                      <div className="flex-1 flex flex-col gap-2">
+                        <strong className="text-lg font-semibold mb-2">{video.title}</strong>
+                        <div className="text-gray-700 mb-2">{video.description}</div>
+                        {video.ipfs_hash && (
+                          <a
+                            href={`https://lavender-eldest-camel-675.mypinata.cloud/ipfs/${video.ipfs_hash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-indigo-600 hover:underline text-xs"
+                          >
+                            View on IPFS
+                          </a>
+                        )}
+                        {video.ipfs_hash && (
+                          <video
+                            controls
+                            src={`https://lavender-eldest-camel-675.mypinata.cloud/ipfs/${video.ipfs_hash}`}
+                            className="mt-2 w-full max-w-md rounded shadow"
+                          >
+                            Your browser does not support the video tag.
+                          </video>
+                        )}
+                      </div>
+                      {video.thumbnail_hash ? (
+                        <img
+                          src={`https://ipfs.io/ipfs/${video.thumbnail_hash}`}
+                          alt={video.title + ' thumbnail'}
+                          className="w-24 h-24 object-cover rounded-xl border border-gray-200"
+                        />
+                      ) : (
+                        <div className="w-24 h-24 flex items-center justify-center bg-gray-200 rounded-xl text-gray-400 text-xs">No Thumbnail</div>
                       )}
                     </div>
-                    {video.thumbnail_hash ? (
-                      <img
-                        src={`https://ipfs.io/ipfs/${video.thumbnail_hash}`}
-                        alt={video.title + ' thumbnail'}
-                        className="w-24 h-24 object-cover rounded-xl border border-gray-200"
-                      />
-                    ) : (
-                      <div className="w-24 h-24 flex items-center justify-center bg-gray-200 rounded-xl text-gray-400 text-xs">No Thumbnail</div>
-                    )}
+                    <CommentSection
+                      videoId={video.id}
+                      likeCount={video.like_count || 0}
+                      viewCount={video.view_count || 0}
+                      onLike={() => {}}
+                    />
                   </li>
                 ))}
             </ul>

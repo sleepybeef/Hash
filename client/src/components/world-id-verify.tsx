@@ -178,13 +178,18 @@ export default function WorldIdVerify({ isOpen, onClose, onVerified, appId }: Wo
                   data-testid="input-username"
                   className="text-black bg-gray-100"
                 />
-                <div className="text-xs text-black mb-2">Your username will be linked to your World ID. You cannot change it later.</div>
+                <div className="text-xs text-black mb-2">
+                  Your username will be linked to your World ID. You cannot change it later.<br />
+                  <span className={username.trim().length > 0 && username.trim().length < 4 ? "text-red-500" : ""}>
+                    {username.trim().length > 0 && username.trim().length < 4 ? "Username must be at least 4 characters." : ""}
+                  </span>
+                </div>
                 <Button
                   type="button"
                   variant="default"
                   className="w-full mt-2 text-black bg-white border border-black rounded-3xl font-bold"
                   onClick={() => verifyMutation.mutate({ proofPayload: worldIdProof, username: username.trim() })}
-                  disabled={!username.trim()}
+                  disabled={username.trim().length < 4}
                 >
                   Create Account & Link World ID
                 </Button>

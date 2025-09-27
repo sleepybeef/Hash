@@ -4,6 +4,7 @@ import {
   videoLikes, 
   subscriptions, 
   videoViews,
+  comments,
   type User, 
   type InsertUser,
   type Video,
@@ -19,6 +20,10 @@ import { db } from "./db";
 import { eq, desc, count, and, sql } from "drizzle-orm";
 
 export interface IStorage {
+  // Comment operations
+  createComment(videoId: string, userId: string, content: string): Promise<any>;
+  getComments(videoId: string): Promise<any[]>;
+  deleteComment(commentId: string, userId: string): Promise<void>;
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByWorldId(worldId: string): Promise<User | undefined>;
@@ -66,6 +71,36 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  async createComment(videoId: string, userId: string, content: string): Promise<any> {
+    const [comment] = await db
+      .insert(comments)
+      .values({ video_id: videoId, user_id: userId, content })
+      .returning();
+    return comment;
+  }
+
+  async getComments(videoId: string): Promise<any[]> {
+    // Join comments with users to get username
+    return await db
+      .select({
+        id: comments.id,
+        video_id: comments.video_id,
+        user_id: comments.user_id,
+        content: comments.content,
+        created_at: comments.created_at,
+        username: users.username,
+      })
+      .from(comments)
+      .innerJoin(users, eq(comments.user_id, users.id))
+      .where(eq(comments.video_id, videoId));
+  }
+
+  async deleteComment(commentId: string, userId: string): Promise<void> {
+    await db.delete(comments).where(and(eq(comments.id, commentId), eq(comments.user_id, userId)));
+  }
+  async deleteVideo(id: string): Promise<void> {
+    await db.delete(videos).where(eq(videos.id, id));
+  }
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
     if (!user) return undefined;
@@ -133,23 +168,23 @@ export class DatabaseStorage implements IStorage {
         id: videos.id,
         title: videos.title,
         description: videos.description,
-        creatorId: videos.creatorId,
+        creator_id: videos.creator_id,
         category: videos.category,
         tags: videos.tags,
         visibility: videos.visibility,
         status: videos.status,
-        ipfsHash: videos.ipfsHash,
-        thumbnailHash: videos.thumbnailHash,
+        ipfs_hash: videos.ipfs_hash,
+        thumbnail_hash: videos.thumbnail_hash,
         duration: videos.duration,
-        fileSize: videos.fileSize,
-        viewCount: videos.viewCount,
-        likeCount: videos.likeCount,
-        dislikeCount: videos.dislikeCount,
-        moderatorId: videos.moderatorId,
-        moderatedAt: videos.moderatedAt,
-        rejectionReason: videos.rejectionReason,
-        createdAt: videos.createdAt,
-        updatedAt: videos.updatedAt,
+        file_size: videos.file_size,
+        view_count: videos.view_count,
+        like_count: videos.like_count,
+        dislike_count: videos.dislike_count,
+        moderator_id: videos.moderator_id,
+        moderated_at: videos.moderated_at,
+        rejection_reason: videos.rejection_reason,
+        created_at: videos.created_at,
+        updated_at: videos.updated_at,
         creator: {
           id: users.id,
           worldId: users.worldId,
@@ -159,11 +194,11 @@ export class DatabaseStorage implements IStorage {
           avatar: users.avatar,
           createdAt: users.createdAt,
           lastUsernameChange: users.lastUsernameChange,
-          mod_password: users.mod_password, // Add mod_password here
+          mod_password: users.mod_password,
         }
       })
       .from(videos)
-      .innerJoin(users, eq(videos.creatorId, users.id))
+      .innerJoin(users, eq(videos.creator_id, users.id))
       .where(eq(videos.id, id));
 
     return result || undefined;
@@ -175,23 +210,23 @@ export class DatabaseStorage implements IStorage {
         id: videos.id,
         title: videos.title,
         description: videos.description,
-        creatorId: videos.creatorId,
+        creator_id: videos.creator_id,
         category: videos.category,
         tags: videos.tags,
         visibility: videos.visibility,
         status: videos.status,
-        ipfsHash: videos.ipfsHash,
-        thumbnailHash: videos.thumbnailHash,
+        ipfs_hash: videos.ipfs_hash,
+        thumbnail_hash: videos.thumbnail_hash,
         duration: videos.duration,
-        fileSize: videos.fileSize,
-        viewCount: videos.viewCount,
-        likeCount: videos.likeCount,
-        dislikeCount: videos.dislikeCount,
-        moderatorId: videos.moderatorId,
-        moderatedAt: videos.moderatedAt,
-        rejectionReason: videos.rejectionReason,
-        createdAt: videos.createdAt,
-        updatedAt: videos.updatedAt,
+        file_size: videos.file_size,
+        view_count: videos.view_count,
+        like_count: videos.like_count,
+        dislike_count: videos.dislike_count,
+        moderator_id: videos.moderator_id,
+        moderated_at: videos.moderated_at,
+        rejection_reason: videos.rejection_reason,
+        created_at: videos.created_at,
+        updated_at: videos.updated_at,
         creator: {
           id: users.id,
           worldId: users.worldId,
@@ -201,13 +236,13 @@ export class DatabaseStorage implements IStorage {
           avatar: users.avatar,
           createdAt: users.createdAt,
           lastUsernameChange: users.lastUsernameChange,
-          mod_password: users.mod_password, // Add mod_password here
+          mod_password: users.mod_password,
         }
       })
       .from(videos)
-      .innerJoin(users, eq(videos.creatorId, users.id))
+      .innerJoin(users, eq(videos.creator_id, users.id))
       .where(eq(videos.status, "approved"))
-      .orderBy(desc(videos.createdAt))
+      .orderBy(desc(videos.created_at))
       .limit(limit)
       .offset(offset);
 
@@ -220,23 +255,23 @@ export class DatabaseStorage implements IStorage {
         id: videos.id,
         title: videos.title,
         description: videos.description,
-        creatorId: videos.creatorId,
+        creator_id: videos.creator_id,
         category: videos.category,
         tags: videos.tags,
         visibility: videos.visibility,
         status: videos.status,
-        ipfsHash: videos.ipfsHash,
-        thumbnailHash: videos.thumbnailHash,
+        ipfs_hash: videos.ipfs_hash,
+        thumbnail_hash: videos.thumbnail_hash,
         duration: videos.duration,
-        fileSize: videos.fileSize,
-        viewCount: videos.viewCount,
-        likeCount: videos.likeCount,
-        dislikeCount: videos.dislikeCount,
-        moderatorId: videos.moderatorId,
-        moderatedAt: videos.moderatedAt,
-        rejectionReason: videos.rejectionReason,
-        createdAt: videos.createdAt,
-        updatedAt: videos.updatedAt,
+        file_size: videos.file_size,
+        view_count: videos.view_count,
+        like_count: videos.like_count,
+        dislike_count: videos.dislike_count,
+        moderator_id: videos.moderator_id,
+        moderated_at: videos.moderated_at,
+        rejection_reason: videos.rejection_reason,
+        created_at: videos.created_at,
+        updated_at: videos.updated_at,
         creator: {
           id: users.id,
           worldId: users.worldId,
@@ -246,13 +281,13 @@ export class DatabaseStorage implements IStorage {
           avatar: users.avatar,
           createdAt: users.createdAt,
           lastUsernameChange: users.lastUsernameChange,
-          mod_password: users.mod_password, // Add mod_password here
+          mod_password: users.mod_password,
         }
       })
       .from(videos)
-      .innerJoin(users, eq(videos.creatorId, users.id))
+      .innerJoin(users, eq(videos.creator_id, users.id))
       .where(eq(videos.status, "pending"))
-      .orderBy(videos.createdAt);
+      .orderBy(videos.created_at);
 
     return results;
   }
@@ -262,10 +297,10 @@ export class DatabaseStorage implements IStorage {
       .update(videos)
       .set({ 
         status, 
-        moderatorId, 
-        rejectionReason, 
-        moderatedAt: new Date(),
-        updatedAt: new Date()
+        moderator_id: moderatorId, 
+        rejection_reason: rejectionReason, 
+        moderated_at: new Date(),
+        updated_at: new Date()
       })
       .where(eq(videos.id, id))
       .returning();
@@ -276,9 +311,9 @@ export class DatabaseStorage implements IStorage {
     const [video] = await db
       .update(videos)
       .set({ 
-        ipfsHash, 
-        thumbnailHash,
-        updatedAt: new Date()
+        ipfs_hash: ipfsHash, 
+        thumbnail_hash: thumbnailHash,
+        updated_at: new Date()
       })
       .where(eq(videos.id, id))
       .returning();
@@ -289,8 +324,8 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(videos)
       .set({ 
-        viewCount: sql`${videos.viewCount} + 1`,
-        updatedAt: new Date()
+            view_count: sql`${videos.view_count} + 1`,
+            updated_at: new Date()
       })
       .where(eq(videos.id, id));
   }
@@ -342,9 +377,9 @@ export class DatabaseStorage implements IStorage {
     await db
       .update(videos)
       .set({
-        likeCount: likeCounts.likes,
-        dislikeCount: likeCounts.dislikes,
-        updatedAt: new Date()
+            like_count: likeCounts.likes,
+            dislike_count: likeCounts.dislikes,
+            updated_at: new Date()
       })
       .where(eq(videos.id, videoId));
   }
@@ -426,8 +461,8 @@ export class DatabaseStorage implements IStorage {
     const [stats] = await db
       .select({
         pending: count(sql`CASE WHEN ${videos.status} = 'pending' THEN 1 END`),
-        approved: count(sql`CASE WHEN ${videos.status} = 'approved' AND ${videos.moderatedAt} >= ${today} THEN 1 END`),
-        rejected: count(sql`CASE WHEN ${videos.status} = 'rejected' AND ${videos.moderatedAt} >= ${today} THEN 1 END`),
+        approved: count(sql`CASE WHEN ${videos.status} = 'approved' AND ${videos.moderated_at} >= ${today} THEN 1 END`),
+        rejected: count(sql`CASE WHEN ${videos.status} = 'rejected' AND ${videos.moderated_at} >= ${today} THEN 1 END`),
       })
       .from(videos);
 

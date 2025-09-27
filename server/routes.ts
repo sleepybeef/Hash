@@ -1,3 +1,4 @@
+  // Moderation: fetch any video for review
 import type { Express, Request, Response } from "express";
 import { createServer, Server } from "http";
 import { storage } from "./storage";
@@ -10,12 +11,92 @@ import bcrypt from "bcryptjs";
 // Configure multer for file uploads
 const upload = multer({
   dest: 'uploads/',
-  limits: {
-    fileSize: 2 * 1024 * 1024 * 1024, // 2GB limit
-  },
+     limits: { fileSize: 200 * 1024 * 1024 }, // 200 MB max file size
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Create a comment
+  app.post("/api/comments", async (req: Request, res: Response) => {
+    try {
+      const { videoId, userId, content } = req.body;
+      if (!videoId || !userId || !content) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      const comment = await storage.createComment(videoId, userId, content);
+      // Fetch username for the user who posted the comment
+      const user = await storage.getUser(userId);
+      res.json({ ...comment, username: user?.username });
+    } catch (error) {
+      console.error("Create comment error:", error);
+      res.status(500).json({ message: "Failed to create comment" });
+    }
+  });
+
+  // Get comments for a video
+  app.get("/api/comments/:videoId", async (req: Request, res: Response) => {
+    try {
+      const videoId = req.params.videoId;
+      const comments = await storage.getComments(videoId);
+      res.json(comments);
+    } catch (error) {
+      console.error("Get comments error:", error);
+      res.status(500).json({ message: "Failed to fetch comments" });
+    }
+  });
+
+  // Delete a comment (only by author)
+  app.delete("/api/comments/:commentId", async (req: Request, res: Response) => {
+    try {
+      const commentId = req.params.commentId;
+      const { userId } = req.body;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID required" });
+      }
+      await storage.deleteComment(commentId, userId);
+      res.json({ message: "Comment deleted" });
+    } catch (error) {
+      console.error("Delete comment error:", error);
+      res.status(500).json({ message: "Failed to delete comment" });
+    }
+  });
+  // Serve .mp4 files from uploads with correct MIME type
+  app.get('/uploads/:file', (req: Request, res: Response) => {
+    const fileName = req.params.file;
+    const filePath = path.join(process.cwd(), 'uploads', fileName);
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).send('File not found');
+    }
+    // Only set video/mp4 for .mp4 files
+    if (fileName.endsWith('.mp4')) {
+      res.type('video/mp4');
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('ETag', '');
+    }
+    res.status(200).sendFile(filePath);
+  });
+  // Moderation: fetch any video for review
+  app.get("/api/moderation/video/:id", async (req: Request, res: Response) => {
+    try {
+      const { userId } = req.query;
+      if (!userId) {
+        return res.status(401).json({ message: "User ID required" });
+      }
+      const user = await storage.getUser(userId as string);
+      if (!user || !user.isModerator) {
+        return res.status(403).json({ message: "Moderator access required" });
+      }
+      const video = await storage.getVideoWithCreator(req.params.id);
+      if (!video) {
+        return res.status(404).json({ message: "Video not found" });
+      }
+      // Always return .mp4 file path for playback
+      const playback_url = `/uploads/${video.id}.mp4`;
+      res.json({ ...video, playback_url });
+    } catch (error) {
+      console.error("Get moderation video error:", error);
+      res.status(500).json({ message: "Failed to get video for moderation" });
+    }
+  });
   // Designate user as moderator (manual/admin action)
   app.post("/api/user/:id/moderator", async (req: Request, res: Response) => {
     try {
@@ -146,7 +227,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Video operations
   app.post("/api/videos/upload", upload.single('video'), async (req: Request, res: Response) => {
     try {
-      const { title, description, category, tags, visibility, creatorId } = req.body;
+  // Only use allowed fields from req.body
+  const title = req.body.title;
+  const description = req.body.description;
+  const category = req.body.category;
+  const tags = req.body.tags;
+  const visibility = req.body.visibility;
+  const creatorId = req.body.creatorId;
       const file = req.file;
 
       if (!file) {
@@ -159,23 +246,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Only verified users can upload videos" });
       }
 
-      const videoData = insertVideoSchema.parse({
+      let finalFilePath = file.path;
+      let finalFileSize = file.size;
+      // Build videoData with only allowed fields
+      const videoData = {
         title,
         description,
-        creatorId,
+        creator_id: creatorId,
         category,
         tags: tags ? tags.split(',').map((tag: string) => tag.trim()) : [],
         visibility: visibility || 'public',
         status: 'pending',
-        duration: 0, // Will be updated after processing
-        fileSize: file.size,
-      });
+        duration: 0,
+        file_size: finalFileSize,
+      };
+      console.log('DEBUG videoData for insertVideoSchema:', videoData);
+      const parsedVideoData = insertVideoSchema.parse(videoData);
+      const video = await storage.createVideo(parsedVideoData);
 
-      const video = await storage.createVideo(videoData);
+      // After DB insert, always convert and name file as `${video.id}.mp4`
+      const ext = file.originalname.split('.').pop()?.toLowerCase();
+      const tempPath = file.path;
+      const mp4Path = path.join('uploads', `${video.id}.mp4`);
+      try {
+        if (ext && ext !== 'mp4') {
+          const { convertMovToMp4 } = await import('./ffmpeg-util');
+          await convertMovToMp4(tempPath, mp4Path);
+          finalFilePath = mp4Path;
+          const fs = await import('fs/promises');
+          const stat = await fs.stat(mp4Path);
+          finalFileSize = stat.size;
+          console.log(`[UPLOAD] Converted and saved to ${mp4Path}, size: ${finalFileSize}`);
+        } else {
+          // If already mp4, just rename to match video.id
+          const fs = await import('fs/promises');
+          await fs.rename(tempPath, mp4Path);
+          finalFilePath = mp4Path;
+          const stat = await fs.stat(mp4Path);
+          finalFileSize = stat.size;
+          console.log(`[UPLOAD] Renamed mp4 to ${mp4Path}, size: ${finalFileSize}`);
+        }
+      } catch (err) {
+        console.error(`[UPLOAD ERROR] Failed to convert or rename file for video ${video.id}:`, err);
+      }
 
       // Store file path for moderation (in real implementation, you'd process the video)
-      const videoPath = path.join(process.cwd(), file.path);
-      
+      const videoPath = path.join(process.cwd(), finalFilePath);
+
       res.json({ 
         video, 
         message: "Video uploaded successfully and queued for moderation",
@@ -359,19 +476,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Upload video file to Pinata
-      const videoPath = path.join(process.cwd(), 'uploads', `${videoId}`); // assumes file is named by id
+      const videoPath = path.join(process.cwd(), 'uploads', `${videoId}.mp4`); // use correct file extension
       let ipfsHash = null;
       try {
         const { uploadFileToPinata } = await import('./pinata');
-        ipfsHash = await uploadFileToPinata(videoPath);
+  ipfsHash = await uploadFileToPinata(videoPath, { name: `${videoId}.mp4` });
       } catch (err) {
         console.error('Pinata upload error:', err);
-        return res.status(500).json({ message: 'Failed to upload to IPFS' });
+        return res.status(500).json({ message: 'Failed to upload to IPFS', error: String(err) });
       }
 
       // Approve video and save IPFS hash
-      await storage.updateVideoStatus(videoId, "approved", moderatorId);
-      await storage.updateVideoIPFS(videoId, ipfsHash);
+      try {
+        await storage.updateVideoStatus(videoId, "approved", moderatorId);
+      } catch (err) {
+        console.error(`[MODERATION] Error updating video status for ${videoId}:`, err);
+        return res.status(500).json({ message: "Failed to update video status", error: String(err) });
+      }
+      try {
+        await storage.updateVideoIPFS(videoId, ipfsHash);
+      } catch (err) {
+        console.error(`[MODERATION] Error updating IPFS hash for ${videoId}:`, err);
+        return res.status(500).json({ message: "Failed to update IPFS hash", error: String(err) });
+      }
 
       // TODO: Notify user (email, push, etc.)
 
@@ -393,10 +520,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Moderator access required" });
       }
 
-      // Reject video
-      await storage.updateVideoStatus(videoId, "rejected", moderatorId, reason);
+      // Delete video file
+      const videoFilePath = path.join(process.cwd(), 'uploads', `${videoId}.mp4`);
+      try {
+        await fs.promises.unlink(videoFilePath);
+        console.log(`[MODERATION] Deleted file: ${videoFilePath}`);
+      } catch (err) {
+        console.warn(`[MODERATION] Could not delete file (may not exist): ${videoFilePath}`);
+      }
 
-      res.json({ message: "Video rejected" });
+      // Remove video from DB
+      await storage.deleteVideo(videoId);
+
+      res.json({ message: "Video rejected and purged" });
     } catch (error) {
       console.error("Reject video error:", error);
       res.status(500).json({ message: "Failed to reject video" });
