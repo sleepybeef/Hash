@@ -23,6 +23,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByWorldId(worldId: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByUsernameCI(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserVerification(id: string, isVerified: boolean): Promise<User>;
   updateUsername(id: string, newUsername: string): Promise<User>;
@@ -58,12 +59,17 @@ export interface IStorage {
     approved: number;
     rejected: number;
   }>;
+
+  // Moderator operations
+  setModerator(id: string, isModerator: boolean): Promise<void>;
+  setModeratorPassword(id: string, hash: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
-    return user || undefined;
+    if (!user) return undefined;
+    return { ...user, mod_password: user.mod_password };
   }
 
   async getUserByWorldId(worldId: string): Promise<User | undefined> {
@@ -73,6 +79,11 @@ export class DatabaseStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async getUserByUsernameCI(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(sql`LOWER(username) = LOWER(${username})`);
     return user;
   }
 
@@ -148,6 +159,7 @@ export class DatabaseStorage implements IStorage {
           avatar: users.avatar,
           createdAt: users.createdAt,
           lastUsernameChange: users.lastUsernameChange,
+          mod_password: users.mod_password, // Add mod_password here
         }
       })
       .from(videos)
@@ -189,6 +201,7 @@ export class DatabaseStorage implements IStorage {
           avatar: users.avatar,
           createdAt: users.createdAt,
           lastUsernameChange: users.lastUsernameChange,
+          mod_password: users.mod_password, // Add mod_password here
         }
       })
       .from(videos)
@@ -233,6 +246,7 @@ export class DatabaseStorage implements IStorage {
           avatar: users.avatar,
           createdAt: users.createdAt,
           lastUsernameChange: users.lastUsernameChange,
+          mod_password: users.mod_password, // Add mod_password here
         }
       })
       .from(videos)
@@ -379,6 +393,7 @@ export class DatabaseStorage implements IStorage {
           avatar: users.avatar,
           createdAt: users.createdAt,
           lastUsernameChange: users.lastUsernameChange,
+          mod_password: users.mod_password, // Add mod_password here
         }
       })
       .from(subscriptions)
@@ -417,6 +432,18 @@ export class DatabaseStorage implements IStorage {
       .from(videos);
 
     return stats;
+  }
+
+  async setModerator(id: string, isModerator: boolean): Promise<void> {
+    await db.update(users)
+      .set({ isModerator })
+      .where(eq(users.id, id));
+  }
+
+  async setModeratorPassword(id: string, hash: string): Promise<void> {
+    await db.update(users)
+      .set({ mod_password: hash })
+      .where(eq(users.id, id));
   }
 }
 

@@ -82,21 +82,32 @@ export default function Home() {
             Hash is a Web-3 video platform with human connection in mind. Sign in with World ID to upload videos, comment, like, or subscribe to users!
           </div>
         </header>
+
         {/* Tab Bar */}
         <nav className="w-full flex justify-center mb-4">
           <ul className="flex gap-4 items-center bg-white bg-opacity-90 rounded-xl shadow p-2 min-h-[56px]">
-            <li>
-              <Link to="/" className="px-4 py-2 rounded-lg font-medium text-indigo-600 bg-indigo-100 hover:bg-indigo-200 transition">Home</Link>
+            <li className="flex items-center justify-center">
+              <Link to="/" className="px-4 py-2 rounded-lg font-medium text-indigo-600 bg-indigo-100 hover:bg-indigo-200 transition flex items-center justify-center">Home</Link>
             </li>
-            <li>
-              <Link to="/subscriptions" className="px-4 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition">Subscriptions</Link>
+            <li className="flex items-center justify-center">
+              <Link to="/subscriptions" className="px-4 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition flex items-center justify-center">Subscriptions</Link>
             </li>
-            <li>
-              <Link to="/my-profile" className="px-4 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition">My Profile</Link>
+            <li className="flex items-center justify-center">
+              <Link to="/my-profile" className="px-4 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition flex flex-col items-center justify-center">
+                <span className="block leading-tight">My</span>
+                <span className="block leading-tight">Profile</span>
+              </Link>
             </li>
-            <li>
-              <button className="px-4 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition" disabled>Settings</button>
+            <li className="flex items-center justify-center">
+              <button className="px-4 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition flex items-center justify-center" disabled>Settings</button>
             </li>
+            {user?.isModerator && (
+              <li className="flex items-center justify-center">
+                <Link to="/admin" className="px-4 py-2 rounded-lg font-medium text-pink-600 bg-pink-100 hover:bg-pink-200 transition flex items-center justify-center h-full">
+                  <span className="w-full text-center">Moderator Homepage</span>
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
         <div className="w-full flex flex-col items-center justify-center mt-8 pb-2 border-b border-gray-200 gap-4">
@@ -166,17 +177,27 @@ export default function Home() {
             </ul>
           )}
         </main>
-        <footer className="w-full py-4 mt-8 border-t border-gray-200 bg-white/60">
-          <div className="container mx-auto px-4 text-xs text-gray-500 flex flex-wrap gap-4 justify-center">
-            <a href="#community-guidelines" className="hover:underline">Community Guidelines</a>
-            <span>|</span>
-            <a href="#what-is-hash" className="hover:underline">What is Hash</a>
-            <span>|</span>
-            <a href="#data-security" className="hover:underline">Data and Security</a>
-            <span>|</span>
-            <a href="#unpin-requests" className="hover:underline">Unpin Requests</a>
-          </div>
-        </footer>
+         <footer className="w-full py-4 mt-8 border-t border-gray-200 bg-white/60">
+           <div className="container mx-auto px-4 text-xs text-gray-500 flex items-center justify-center">
+             <div className="flex items-center justify-center w-full whitespace-nowrap">
+               <a href="#community-guidelines" className="hover:underline">Community Guidelines</a>
+               <span className="mx-3">|</span>
+               <a href="#what-is-hash" className="hover:underline">What is Hash</a>
+               <span className="mx-3">|</span>
+               <a href="#data-security" className="hover:underline">Data and Security</a>
+               <span className="mx-3">|</span>
+               <a href="#unpin-requests" className="hover:underline">Unpin Requests</a>
+               <span className="mx-3">|</span>
+               <a
+                 href="/admin"
+                 className="text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                 style={{ textDecoration: "none" }}
+               >
+                 Internal
+               </a>
+             </div>
+           </div>
+         </footer>
       </div>
     </div>
   );
