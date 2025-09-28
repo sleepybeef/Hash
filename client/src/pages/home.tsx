@@ -1,15 +1,17 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../lib/AuthContext";
 import WorldIdVerify from "../components/world-id-verify";
-import UploadModal from "../components/upload-modal";
+import { lazy, Suspense } from "react";
+const UploadModal = lazy(() => import("../components/upload-modal"));
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
-import CommentSection from "../components/comment-section";
+const CommentSection = lazy(() => import("../components/comment-section"));
+import { Loading, ErrorFeedback } from "../components/ui/feedback";
 
 console.log("Home.tsx loaded");
 console.log("VITE_SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL);
 console.log("VITE_SUPABASE_ANON_KEY:", import.meta.env.VITE_SUPABASE_ANON_KEY);
-
 type Video = {
   id: string;
   title: string;
@@ -21,15 +23,11 @@ type Video = {
   // Add other fields as needed
 };
 
-
 export default function Home() {
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<{ message: string } | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<Video[]>([]);
-  const [uploadOpen, setUploadOpen] = useState(false);
   const { user, setUser } = useAuth();
 
   const handleVerified = (userData: any) => {
@@ -37,34 +35,44 @@ export default function Home() {
     setUser({ ...userData, isVerified: true });
   };
 
-  useEffect(() => {
-    async function fetchVideos() {
+  const {
+    data: videos = [],
+    isLoading: loading,
+    error,
+    refetch,
+  } = useQuery<Video[]>({
+    queryKey: ["videos", "approved"],
+    queryFn: async () => {
       const { data, error } = await supabase
         .from("videos")
         .select("*")
         .eq("status", "approved");
-      setVideos((data as Video[]) || []);
-      setError(error ? { message: error.message } : null);
-      setLoading(false);
-    }
-    fetchVideos();
-  }, []);
+      if (error) throw new Error(error.message);
+      return (data as Video[]) || [];
+    },
+  });
+
+  if (loading) {
+    return <Loading message="Loading videos..." />;
+  }
+  if (error) {
+    return <ErrorFeedback error={error} />;
+  }
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     // Search by title, description, or CID
     const { data, error } = await supabase
       .from("videos")
       .select("*")
       .eq("status", "approved")
-  .or(`title.ilike.%${search}%,description.ilike.%${search}%,id.eq.${search},ipfs_hash.eq.${search}`);
+      .or(`title.ilike.%${search}%,description.ilike.%${search}%,id.eq.${search},ipfs_hash.eq.${search}`);
     setSearchResults((data as Video[]) || []);
-    setLoading(false);
   };
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-400 px-6 pt-4 md:px-12 md:pt-8 pb-6 relative">
+      {/* Top left: sign-in or user info */}
       {!user ? (
         <button
           className="absolute top-6 left-6 z-20 px-5 py-2 rounded-full bg-white text-indigo-600 font-semibold shadow hover:bg-indigo-50 border border-indigo-200 transition"
@@ -78,16 +86,13 @@ export default function Home() {
             <i className="fas fa-user-circle text-indigo-600"></i>
             {user.username || "User"}
           </div>
-          {user.isVerified && (
-            <button
-              className="px-5 py-2 rounded-full bg-white text-indigo-600 font-semibold shadow border border-indigo-200 transition flex items-center gap-2"
-              style={{ fontFamily: 'Inter, DM Sans, Montserrat, sans-serif' }}
-              onClick={() => setUploadOpen(true)}
-            >
-              <i className="fas fa-upload text-indigo-600"></i>
-              Upload Video
-            </button>
-          )}
+          <button
+            className="mt-2 px-5 py-2 rounded-full bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-700 border border-indigo-200 transition"
+            onClick={() => setUploadOpen(true)}
+          >
+            <i className="fas fa-upload mr-2"></i>
+            Upload Video
+          </button>
         </div>
       )}
       <WorldIdVerify
@@ -96,11 +101,12 @@ export default function Home() {
         onVerified={handleVerified}
         appId="app_44c44d13873007e69e0abd75b9e7528d"
       />
-      <UploadModal
-        isOpen={uploadOpen}
-        onClose={() => setUploadOpen(false)}
-        currentUser={user}
-      />
+      <Suspense fallback={<div className="p-8 text-center">Loading upload modal...</div>}>
+        <UploadModal
+          isOpen={uploadOpen}
+          onClose={() => setUploadOpen(false)}
+        />
+      </Suspense>
       <div className="w-full max-w-2xl mx-auto flex flex-col items-center">
         <header className="w-full flex flex-col items-center pb-2">
           <h1 className="text-4xl font-extrabold mb-2 text-center font-sans tracking-tight" style={{ fontFamily: 'Inter, DM Sans, Montserrat, sans-serif' }}>Welcome to Hash</h1>
@@ -108,7 +114,6 @@ export default function Home() {
             Hash is a Web-3 video platform with human connection in mind. Sign in with World ID to upload videos, comment, like, or subscribe to users!
           </div>
         </header>
-
         {/* Tab Bar */}
         <nav className="w-full flex justify-center mb-4">
           <ul className="flex gap-4 items-center bg-white bg-opacity-90 rounded-xl shadow p-2 min-h-[56px]">
@@ -159,7 +164,7 @@ export default function Home() {
           {loading ? (
             <div className="text-center text-gray-500 py-16">Loading videos...</div>
           ) : error ? (
-            <div className="text-center text-red-500 py-16">Error loading videos: {error.message}</div>
+            <div className="text-center text-red-500 py-16">Error loading videos: {(error as any).message}</div>
           ) : (search ? searchResults.length === 0 : videos.length === 0) ? (
             <div className="text-center text-gray-500 py-16">No videos found.</div>
           ) : (
@@ -200,12 +205,14 @@ export default function Home() {
                         <div className="w-24 h-24 flex items-center justify-center bg-gray-200 rounded-xl text-gray-400 text-xs">No Thumbnail</div>
                       )}
                     </div>
-                    <CommentSection
-                      videoId={video.id}
-                      likeCount={video.like_count || 0}
-                      viewCount={video.view_count || 0}
-                      onLike={() => {}}
-                    />
+                    <Suspense fallback={<div className="text-gray-500">Loading comments...</div>}>
+                      <CommentSection
+                        videoId={video.id}
+                        likeCount={video.like_count || 0}
+                        viewCount={video.view_count || 0}
+                        onLike={() => {}}
+                      />
+                    </Suspense>
                   </li>
                 ))}
             </ul>

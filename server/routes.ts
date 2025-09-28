@@ -22,10 +22,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!videoId || !userId || !content) {
         return res.status(400).json({ message: "Missing required fields" });
       }
+      // Basic input sanitization: reject comments containing HTML tags
+      if (/<[a-z][\s\S]*>/i.test(content)) {
+        return res.status(400).json({ message: "HTML tags are not allowed in comments." });
+      }
       const comment = await storage.createComment(videoId, userId, content);
       // Fetch username for the user who posted the comment
       const user = await storage.getUser(userId);
-      res.json({ ...comment, username: user?.username });
+      res.json({ ...comment, username: user?.username || undefined });
     } catch (error) {
       console.error("Create comment error:", error);
       res.status(500).json({ message: "Failed to create comment" });

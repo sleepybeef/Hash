@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../lib/AuthContext";
 import { Button } from "../components/ui/button";
 
@@ -20,47 +21,46 @@ interface CommentSectionProps {
 
 export default function CommentSection({ videoId, likeCount, viewCount, onLike }: CommentSectionProps) {
   const { user } = useAuth();
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
   const [newComment, setNewComment] = useState("");
   const [posting, setPosting] = useState(false);
 
-  useEffect(() => {
-    async function fetchComments() {
-      setLoading(true);
-  const res = await fetch(`http://localhost:5000/api/comments/${videoId}`);
-      const data = await res.json();
-      setComments(data);
-      setLoading(false);
-    }
-    fetchComments();
-  }, [videoId]);
+  const {
+    data: comments = [],
+    isLoading: loading,
+    error,
+    refetch,
+  } = useQuery<Comment[]>({
+    queryKey: ["comments", videoId],
+    queryFn: async () => {
+      const res = await fetch(`http://localhost:5000/api/comments/${videoId}`);
+      if (!res.ok) throw new Error("Failed to fetch comments");
+      return await res.json();
+    },
+  });
 
   async function handlePostComment() {
     if (!user || !newComment.trim()) return;
     setPosting(true);
-  const res = await fetch("http://localhost:5000/api/comments", {
+    const res = await fetch("http://localhost:5000/api/comments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ videoId, userId: user.id, content: newComment })
     });
     if (res.ok) {
       setNewComment("");
-  const comment: Comment = await res.json();
-  // Ensure username is set for newly posted comment
-  setComments([{ ...comment, username: user.username }, ...comments]);
+      await refetch();
     }
     setPosting(false);
   }
 
   async function handleDeleteComment(commentId: string) {
     if (!user) return;
-  await fetch(`http://localhost:5000/api/comments/${commentId}`, {
+    await fetch(`http://localhost:5000/api/comments/${commentId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.id })
     });
-    setComments(comments.filter(c => c.id !== commentId));
+    await refetch();
   }
 
   return (
@@ -89,7 +89,7 @@ export default function CommentSection({ videoId, likeCount, viewCount, onLike }
           {comments.map(comment => (
             <li key={comment.id} className="border-b pb-2">
               <div className="flex justify-between items-center">
-                <span className="font-semibold">{comment.username ? comment.username : comment.user_id}</span>
+                <span className="font-semibold">{comment.username || "Anonymous"}</span>
                 {user && user.id === comment.user_id && (
                   <Button size="sm" variant="ghost" onClick={() => handleDeleteComment(comment.id)}>Delete</Button>
                 )}

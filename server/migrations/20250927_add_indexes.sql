@@ -1,0 +1,9 @@
+-- Migration: Add explicit indexes for query efficiency
+CREATE INDEX IF NOT EXISTS idx_comments_video_id ON comments(video_id);
+CREATE INDEX IF NOT EXISTS idx_comments_user_id ON comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_video_likes_video_id ON video_likes(video_id);
+CREATE INDEX IF NOT EXISTS idx_video_likes_user_id ON video_likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_video_views_video_id ON video_views(video_id);
+CREATE INDEX IF NOT EXISTS idx_video_views_viewer_ip ON video_views(viewer_ip);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_subscriber_id ON subscriptions(subscriber_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_creator_id ON subscriptions(creator_id);
