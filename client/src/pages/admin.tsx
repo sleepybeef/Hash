@@ -3,6 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Input } from "../components/ui/input";
 import { Button } from "../components/ui/button";
 import { useAuth } from "../lib/AuthContext";
+import { API_BASE_URL } from "../lib/api";
 
 export default function AdminPage() {
   const { user, setUser } = useAuth();
@@ -38,7 +39,7 @@ export default function AdminPage() {
   async function handleSearch() {
     setError(""); setSuccess(""); setFoundUser(null); setLoading(true);
     setShowSetPassword(false); setShowVerifyPassword(false); setPassword("");
-    const res = await fetch(`/api/user/by-username/${search}`);
+    const res = await fetch(`${API_BASE_URL}/user/by-username/${search}`);
     if (!res.ok) {
       setError("User not found");
       setLoading(false);
@@ -62,7 +63,7 @@ export default function AdminPage() {
       setError("Password must be at least 6 characters.");
       return;
     }
-    const res = await fetch(`/api/user/${foundUser.id}/mod-password`, {
+    const res = await fetch(`${API_BASE_URL}/user/${foundUser.id}/mod-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password })
@@ -79,7 +80,7 @@ export default function AdminPage() {
 
   async function handleVerifyPassword() {
     setError(""); setSuccess("");
-    const res = await fetch(`/api/user/${foundUser.id}/verify-mod-password`, {
+    const res = await fetch(`${API_BASE_URL}/user/${foundUser.id}/verify-mod-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password })

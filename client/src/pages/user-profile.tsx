@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { API_BASE_URL } from "../lib/api";
 import { useParams, Link } from "react-router-dom";
 import { useAuth } from "../lib/AuthContext";
 import { supabase } from "../lib/supabase";
@@ -46,7 +47,7 @@ export default function UserProfilePage() {
   async function handleUsernameSave() {
     setUsernameErrorMsg("");
     try {
-      const resp = await fetch(`/api/user/${id}/username`, {
+  const resp = await fetch(`${API_BASE_URL}/user/${id}/username`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newUsername: editUsername })

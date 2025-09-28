@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../lib/AuthContext";
+import { API_BASE_URL } from "../lib/api";
 import { Button } from "../components/ui/button";
 
 type Comment = {
@@ -32,7 +33,7 @@ export default function CommentSection({ videoId, likeCount, viewCount, onLike }
   } = useQuery<Comment[]>({
     queryKey: ["comments", videoId],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:5000/api/comments/${videoId}`);
+      const res = await fetch(`${API_BASE_URL}/comments/${videoId}`);
       if (!res.ok) throw new Error("Failed to fetch comments");
       return await res.json();
     },
@@ -55,7 +56,7 @@ export default function CommentSection({ videoId, likeCount, viewCount, onLike }
 
   async function handleDeleteComment(commentId: string) {
     if (!user) return;
-    await fetch(`http://localhost:5000/api/comments/${commentId}`, {
+    await fetch(`${API_BASE_URL}/comments/${commentId}`, {
       method: "DELETE",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: user.id })

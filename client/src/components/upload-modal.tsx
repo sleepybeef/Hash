@@ -11,6 +11,7 @@ import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest } from "../lib/queryClient";
+import { API_BASE_URL } from "../lib/api";
 
 const uploadSchema = z.object({
   title: z.string().min(1, "Title is required").max(100, "Title too long"),
@@ -64,7 +65,7 @@ export default function UploadModal({ isOpen, onClose, currentUser }: UploadModa
       formData.append("visibility", data.visibility);
       formData.append("creatorId", currentUser.id);
 
-      const response = await fetch("/api/videos/upload", {
+      const response = await fetch(`${API_BASE_URL}/videos/upload`, {
         method: "POST",
         body: formData,
       });

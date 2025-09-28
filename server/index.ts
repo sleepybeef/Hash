@@ -10,6 +10,7 @@ import { registerRoutes } from "./routes";
 dotenv.config();
 
 
+console.log('PINATA_JWT:', process.env.PINATA_JWT);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 
@@ -21,7 +22,14 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use("/api/", apiLimiter);
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:3000",
+    "http://localhost:5173", // Added for Vite dev server
+    "https://hashactual.vercel.app"
+  ],
+  credentials: true
+}));
 app.use(express.json());
 // Serve static files from uploads directory
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));

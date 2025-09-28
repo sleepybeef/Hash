@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { API_BASE_URL } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -88,7 +89,7 @@ export default function ModeratorDashboard() {
     queryKey: ["/api/moderation/stats", currentUser?.id],
     queryFn: async () => {
       if (!currentUser?.isModerator || !currentUser?.id) return { pending: 0, approved: 0, rejected: 0 };
-      const res = await fetch(`/api/moderation/stats?userId=${currentUser.id}`);
+  const res = await fetch(`${API_BASE_URL}/moderation/stats?userId=${currentUser.id}`);
       if (!res.ok) throw new Error("Failed to fetch moderation stats");
       return res.json();
     },
@@ -99,7 +100,7 @@ export default function ModeratorDashboard() {
     queryKey: ["/api/moderation/queue", { userId: currentUser?.id }],
     queryFn: async () => {
       if (!currentUser?.isModerator || !currentUser?.id) return [];
-      const res = await fetch(`/api/moderation/queue?userId=${currentUser.id}`);
+  const res = await fetch(`${API_BASE_URL}/moderation/queue?userId=${currentUser.id}`);
       if (!res.ok) throw new Error("Failed to fetch pending videos");
       return res.json();
     },
@@ -110,7 +111,7 @@ export default function ModeratorDashboard() {
   const approveMutation = useMutation({
     mutationFn: async ({ videoId }: { videoId: string }) => {
       if (!currentUser || !currentUser.isModerator) throw new Error("Not authorized");
-      const res = await fetch(`/api/moderation/videos/${videoId}/approve`, {
+  const res = await fetch(`${API_BASE_URL}/moderation/videos/${videoId}/approve`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ moderatorId: currentUser.id }),
@@ -327,8 +328,27 @@ export default function ModeratorDashboard() {
                           </div>
                         </div>
                       )}
+                      {/* Approve/Reject Buttons */}
+                      <div className="flex gap-4 mt-6">
+                        <Button
+                          className="bg-green-600 hover:bg-green-700 text-white font-bold px-6 py-2 rounded"
+                          onClick={() => approveMutation.mutate({ videoId: selectedVideo.id })}
+                          disabled={approveMutation.isPending}
+                          data-testid="approve-btn"
+                        >
+                          {approveMutation.isPending ? "Approving..." : "Approve"}
+                        </Button>
+                        <Button
+                          className="bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-2 rounded"
+                          onClick={() => rejectMutation.mutate({ videoId: selectedVideo.id, reason: rejectionReason })}
+                          disabled={rejectMutation.isPending}
+                          data-testid="reject-btn"
+                        >
+                          {rejectMutation.isPending ? "Rejecting..." : "Reject"}
+                        </Button>
+                      </div>
                       {/* Rejection Reason Input */}
-                      <div>
+                      <div className="mt-4">
                         <label className="block text-sm font-medium mb-2">
                           Rejection Reason (optional)
                         </label>
