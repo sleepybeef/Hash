@@ -1,18 +1,19 @@
-import PinataClient from '@pinata/sdk';
-import fs from 'fs';
-import path from 'path';
 
-const pinata = new PinataClient({
-  pinataApiKey: process.env.VITE_PINATA_API_KEY || process.env.PINATA_API_KEY,
-  pinataSecretApiKey: process.env.VITE_PINATA_API_SECRET || process.env.PINATA_API_SECRET,
+import { PinataSDK } from "pinata";
+import fs from "fs";
+
+const pinata = new PinataSDK({
+  pinataJwt: process.env.PINATA_JWT,
+  pinataGateway: process.env.PINATA_GATEWAY,
 });
 
 export async function uploadFileToPinata(filePath: string, options: { name?: string } = {}) {
   const stream = fs.createReadStream(filePath);
-  const pinataOptions: any = {};
+  // V2 SDK: public upload with name
+  let upload = pinata.upload.public.file(stream);
   if (options.name) {
-    pinataOptions.pinataMetadata = { name: options.name };
+    upload = upload.name(options.name);
   }
-  const result = await pinata.pinFileToIPFS(stream, pinataOptions);
-  return result.IpfsHash;
+  const result = await upload;
+  return result.cid;
 }
