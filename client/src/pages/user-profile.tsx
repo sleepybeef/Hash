@@ -14,7 +14,8 @@ export default function UserProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editMode, setEditMode] = useState(false);
+  const [editUsernameMode, setEditUsernameMode] = useState(false);
+  const [editBioMode, setEditBioMode] = useState(false);
   const [editUsername, setEditUsername] = useState("");
   const [editBio, setEditBio] = useState("");
   // Avatar upload functionality removed
@@ -30,7 +31,7 @@ export default function UserProfilePage() {
   setProfile(data);
       setEditUsername(data?.username || "");
       setEditBio(data?.bio || "");
-  const { data: vids } = await supabase.from("videos").select("*").eq("creator_id", id);
+    const { data: vids } = await supabase.from("videos").select("*").eq("creator_id", id).eq("status", "approved");
       setVideos(vids || []);
       setLoading(false);
     }
@@ -39,12 +40,12 @@ export default function UserProfilePage() {
 
   // Avatar upload functionality removed
 
-  const [errorMsg, setErrorMsg] = useState("");
+  const [usernameErrorMsg, setUsernameErrorMsg] = useState("");
+  const [bioErrorMsg, setBioErrorMsg] = useState("");
 
-  async function handleProfileSave() {
-    setErrorMsg("");
+  async function handleUsernameSave() {
+    setUsernameErrorMsg("");
     try {
-      // Update username via backend
       const resp = await fetch(`/api/user/${id}/username`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -53,20 +54,29 @@ export default function UserProfilePage() {
       const result = await resp.json();
       if (!resp.ok) {
         if (result.message?.includes("30 days")) {
-          setErrorMsg("Please wait 30 days to change your username");
+          setUsernameErrorMsg("Please wait 30 days to change your username");
         } else if (result.message?.includes("taken")) {
-          setErrorMsg("That username is taken :/");
+          setUsernameErrorMsg("That username is taken :/");
         } else {
-          setErrorMsg(result.message || "Failed to update profile");
+          setUsernameErrorMsg(result.message || "Failed to update username");
         }
         return;
       }
-      // Update bio (if changed)
-      await supabase.from("users").update({ bio: editBio }).eq("id", id);
-      setProfile((p: any) => ({ ...p, username: editUsername, bio: editBio }));
-      setEditMode(false);
+      setProfile((p: any) => ({ ...p, username: editUsername }));
+      setEditUsernameMode(false);
     } catch (err) {
-      setErrorMsg("Failed to update profile");
+      setUsernameErrorMsg("Failed to update username");
+    }
+  }
+
+  async function handleBioSave() {
+    setBioErrorMsg("");
+    try {
+      await supabase.from("users").update({ bio: editBio }).eq("id", id);
+      setProfile((p: any) => ({ ...p, bio: editBio }));
+      setEditBioMode(false);
+    } catch (err) {
+      setBioErrorMsg("Failed to update bio");
     }
   }
 
@@ -85,7 +95,7 @@ export default function UserProfilePage() {
             <Link to="/my-profile" className="px-4 py-2 rounded-lg font-medium text-indigo-600 bg-indigo-100 hover:bg-indigo-200 transition">My Profile</Link>
           </li>
           <li>
-            <button className="px-4 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition" disabled>Settings</button>
+            <Link to="/settings" className="px-4 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100 transition">Settings</Link>
           </li>
         </ul>
       </nav>
@@ -103,7 +113,7 @@ export default function UserProfilePage() {
                 className="w-20 h-20 rounded-full border border-gray-200 object-cover mb-2"
               />
             </div>
-            {editMode ? (
+            {editUsernameMode ? (
               <div className="w-full flex flex-col items-center gap-2">
                 <div className="text-xs text-gray-500 mb-1">You can only change your username once every 30 days.</div>
                 <Input
@@ -112,27 +122,40 @@ export default function UserProfilePage() {
                   placeholder="Username"
                   className="mb-2"
                 />
-                {errorMsg && (
-                  <div className="text-sm text-red-500 mb-2">{errorMsg}</div>
+                {usernameErrorMsg && (
+                  <div className="text-sm text-red-500 mb-2">{usernameErrorMsg}</div>
                 )}
+                <div className="flex gap-2">
+                  <Button onClick={handleUsernameSave} variant="default">Save</Button>
+                  <Button onClick={() => { setEditUsernameMode(false); setUsernameErrorMsg(""); setEditUsername(profile.username); }} variant="outline">Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <h1 className="text-3xl font-bold mb-1">{profile.username}</h1>
+                {/* Username change moved to settings page */}
+              </>
+            )}
+            {editBioMode ? (
+              <div className="w-full flex flex-col items-center gap-2">
                 <Textarea
                   value={editBio}
                   onChange={e => setEditBio(e.target.value)}
                   placeholder="Bio"
                   className="mb-2"
                 />
+                {bioErrorMsg && (
+                  <div className="text-sm text-red-500 mb-2">{bioErrorMsg}</div>
+                )}
                 <div className="flex gap-2">
-                  <Button onClick={handleProfileSave} variant="default">Save</Button>
-                  <Button onClick={() => { setEditMode(false); setErrorMsg(""); }} variant="outline">Cancel</Button>
+                  <Button onClick={handleBioSave} variant="default">Save</Button>
+                  <Button onClick={() => { setEditBioMode(false); setBioErrorMsg(""); setEditBio(profile.bio || ""); }} variant="outline">Cancel</Button>
                 </div>
               </div>
             ) : (
               <>
-                <h1 className="text-3xl font-bold mb-1">{profile.username}</h1>
-                <div className="text-sm text-gray-600 mb-4">{profile.bio || "No bio yet."}</div>
-                {isOwnProfile && (
-                  <Button onClick={() => setEditMode(true)} variant="outline" className="mb-2">Edit Profile</Button>
-                )}
+                <div className="text-sm text-black mb-4">{profile.bio || "No bio yet."}</div>
+                {/* Bio edit moved to settings page */}
               </>
             )}
             {isOwnProfile && (
