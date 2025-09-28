@@ -13,7 +13,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     rollupOptions: {
-      external: ["lucide-react"],
+      // No external modules; bundle everything needed for static deployment
     },
   },
 });
