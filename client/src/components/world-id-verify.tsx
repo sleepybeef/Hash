@@ -13,6 +13,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { useToast } from "../hooks/use-toast";
 import { apiRequest } from "../lib/queryClient";
+import { API_BASE_URL } from "../lib/api";
 
 interface WorldIdVerifyProps {
   isOpen: boolean;
@@ -71,7 +72,7 @@ export default function WorldIdVerify({ isOpen, onClose, onVerified, appId }: Wo
     // Check if user exists by worldId
     try {
       const worldId = proof.nullifier_hash;
-      const response = await apiRequest("GET", `/api/user/by-worldid/${worldId}`);
+  const response = await apiRequest("GET", `${API_BASE_URL}/user/by-worldid/${worldId}`);
       const user = await response.json();
       if (user && user.username) {
         // Instantly sign in the user and close the dialog

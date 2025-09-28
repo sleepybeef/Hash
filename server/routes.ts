@@ -292,6 +292,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } catch (err) {
         console.error(`[UPLOAD ERROR] Failed to convert or rename file for video ${video.id}:`, err);
+        if (err && err.code) {
+          console.error(`[UPLOAD ERROR CODE]`, err.code);
+        }
+        if (err && err.message) {
+          console.error(`[UPLOAD ERROR MESSAGE]`, err.message);
+        }
+        if (err && err.stack) {
+          console.error(`[UPLOAD ERROR STACK]`, err.stack);
+        }
       }
 
       // Store file path for moderation (in real implementation, you'd process the video)

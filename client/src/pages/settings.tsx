@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API_BASE_URL } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { Input } from "../components/ui/input";
 import { Textarea } from "../components/ui/textarea";
@@ -21,7 +22,7 @@ export default function SettingsPage() {
     setSuccessMsg("");
     if (!user) return;
     try {
-      const resp = await fetch(`/api/user/${user.id}/username`, {
+  const resp = await fetch(`${API_BASE_URL}/user/${user.id}/username`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newUsername: editUsername })

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { API_BASE_URL } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -22,7 +23,7 @@ export default function ModerateVideoPage() {
     queryKey: ["/api/moderation/video", id, user?.id],
     queryFn: async () => {
       if (!id || !user?.id) throw new Error("Missing moderator userId");
-      const res = await fetch(`/api/moderation/video/${id}?userId=${user.id}`);
+        const res = await fetch(`${API_BASE_URL}/moderation/video/${id}?userId=${user.id}`);
       if (!res.ok) throw new Error("Failed to fetch video");
       return res.json();
     },

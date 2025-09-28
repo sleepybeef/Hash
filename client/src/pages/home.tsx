@@ -105,6 +105,7 @@ export default function Home() {
         <UploadModal
           isOpen={uploadOpen}
           onClose={() => setUploadOpen(false)}
+          currentUser={user}
         />
       </Suspense>
       <div className="w-full max-w-2xl mx-auto flex flex-col items-center">
