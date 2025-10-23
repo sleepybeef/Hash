@@ -75,12 +75,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (!fs.existsSync(filePath)) {
       return res.status(404).send('File not found');
     }
-    // Only set video/mp4 for .mp4 files
-    if (fileName.endsWith('.mp4')) {
-      res.type('video/mp4');
-      res.setHeader('Cache-Control', 'no-store');
-      res.setHeader('ETag', '');
-    }
+    // Set appropriate content type based on file extension
+    const lower = fileName.toLowerCase();
+    if (lower.endsWith('.mp4')) res.type('video/mp4');
+    else if (lower.endsWith('.mov')) res.type('video/quicktime');
+    else if (lower.endsWith('.webm')) res.type('video/webm');
+    else if (lower.endsWith('.mkv')) res.type('video/x-matroska');
+    else if (lower.endsWith('.avi')) res.type('video/x-msvideo');
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('ETag', '');
     res.status(200).sendFile(filePath);
   });
   // Moderation: fetch any video for review
@@ -279,13 +282,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const mp4Path = path.join('uploads', `${video.id}.mp4`);
       try {
         if (ext && ext !== 'mp4') {
-          const { convertMovToMp4 } = await import('./ffmpeg-util');
-          await convertMovToMp4(tempPath, mp4Path);
-          finalFilePath = mp4Path;
-          const fs = await import('fs/promises');
-          const stat = await fs.stat(mp4Path);
-          finalFileSize = stat.size;
-          console.log(`[UPLOAD] Converted and saved to ${mp4Path}, size: ${finalFileSize}`);
+          // Attempt conversion via ffmpeg
+          try {
+            const { convertMovToMp4 } = await import('./ffmpeg-util');
+            await convertMovToMp4(tempPath, mp4Path);
+            finalFilePath = mp4Path;
+            const fs = await import('fs/promises');
+            const stat = await fs.stat(mp4Path);
+            finalFileSize = stat.size;
+            console.log(`[UPLOAD] Converted and saved to ${mp4Path}, size: ${finalFileSize}`);
+          } catch (convErr: any) {
+            // Graceful fallback: keep original extension
+            const fallbackPath = path.join('uploads', `${video.id}.${ext}`);
+            const fs = await import('fs/promises');
+            await fs.rename(tempPath, fallbackPath);
+            finalFilePath = fallbackPath;
+            const stat = await fs.stat(fallbackPath);
+            finalFileSize = stat.size;
+            console.warn(`[UPLOAD] ffmpeg unavailable/failed. Saved original as ${fallbackPath}, size: ${finalFileSize}`);
+          }
         } else {
           // If already mp4, just rename to match video.id
           const fs = await import('fs/promises');
@@ -493,12 +508,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Video is not pending moderation" });
       }
 
-      // Upload video file to Pinata
-      const videoPath = path.join(process.cwd(), 'uploads', `${videoId}.mp4`); // use correct file extension
+      // Upload video file to Pinata: find any file with this id and known extensions
+      const candidateExts = ['mp4','mov','webm','mkv','avi'];
+      let foundPath: string | null = null;
+      for (const e of candidateExts) {
+        const p = path.join(process.cwd(), 'uploads', `${videoId}.${e}`);
+        if (fs.existsSync(p)) { foundPath = p; break; }
+      }
+      if (!foundPath) {
+        return res.status(404).json({ message: 'Video file not found on disk for moderation' });
+      }
+      const videoPath = foundPath;
       let ipfsHash = null;
       try {
         const { uploadFileToPinata } = await import('./pinata');
-  ipfsHash = await uploadFileToPinata(videoPath, { name: `${videoId}.mp4` });
+        ipfsHash = await uploadFileToPinata(videoPath, { name: path.basename(videoPath) });
       } catch (err) {
         console.error('Pinata upload error:', err);
         return res.status(500).json({ message: 'Failed to upload to IPFS', error: String(err) });

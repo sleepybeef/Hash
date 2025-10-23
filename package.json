@@ -32,6 +32,7 @@
     "express": "^4.21.2",
     "express-rate-limit": "^8.1.0",
     "form-data": "^4.0.4",
+    "helmet": "^8.1.0",
     "lucide-react": "^0.544.0",
     "multer": "^2.0.0",
     "pinata": "^2.0.0",
