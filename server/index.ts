@@ -2,6 +2,7 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
 import cors from "cors";
+import helmet from "helmet";
 import path from "path";
 import { fileURLToPath } from "url";
 import dotenv from "dotenv";
@@ -22,6 +23,31 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use("/api/", apiLimiter);
+// Security headers
+app.use(
+  helmet({
+    crossOriginEmbedderPolicy: false, // allow media embeds in dev
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        "default-src": ["'self'"],
+        "script-src": ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        "style-src": ["'self'", "'unsafe-inline'", "https:"],
+        "img-src": ["'self'", "data:", "https:"],
+        "connect-src": [
+          "'self'",
+          "http://localhost:5000",
+          "http://localhost:5173",
+          "https://*.supabase.co",
+          "https://*.mypinata.cloud",
+          "https://ipfs.io"
+        ],
+        "media-src": ["'self'", "blob:", "https:"],
+        "frame-src": ["'self'", "https:"],
+      },
+    },
+  })
+);
 app.use(cors({
   origin: [
     "http://localhost:3000",
