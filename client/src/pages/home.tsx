@@ -8,7 +8,6 @@ import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 const CommentSection = lazy(() => import("../components/comment-section"));
 import { Loading, ErrorFeedback } from "../components/ui/feedback";
-// Removed GPT-5 feature flag wiring
 
 console.log("Home.tsx loaded");
 console.log("VITE_SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL);
@@ -74,8 +73,7 @@ export default function Home() {
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-400 px-6 pt-4 md:px-12 md:pt-8 pb-6 relative">
-      {/* Feature indicator: GPT-5 */}
-      {/* AI model badge removed */}
+  {/* top-right indicators removed */}
       {/* Top left: sign-in or user info */}
       {!user ? (
         <button
