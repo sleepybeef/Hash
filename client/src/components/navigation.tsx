@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Link } from "wouter";
+import { Link } from "react-router-dom";
 
 type User = {
   id: string;
@@ -35,7 +35,7 @@ export default function Navigation({ user, onOpenUpload, onOpenVerification }: N
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-3" data-testid="logo">
+          <Link to="/" className="flex items-center space-x-3" data-testid="logo">
             <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
               <i className="fas fa-play text-white text-sm"></i>
             </div>
