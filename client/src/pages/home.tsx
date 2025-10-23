@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../lib/AuthContext";
 import WorldIdVerify from "../components/world-id-verify";
@@ -28,6 +28,9 @@ export default function Home() {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<Video[]>([]);
+  const [videosState, setVideosState] = useState<Video[]>([]);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 12;
   const { user, setUser } = useAuth();
   // No feature flags in use
 
@@ -36,22 +39,37 @@ export default function Home() {
     setUser({ ...userData, isVerified: true });
   };
 
-  const {
-    data: videos = [],
-    isLoading: loading,
-    error,
-    refetch,
-  } = useQuery<Video[]>({
-    queryKey: ["videos", "approved"],
+  const { isLoading: loading, error } = useQuery<{ initial: boolean }>({
+    queryKey: ["videos", "approved", PAGE_SIZE],
     queryFn: async () => {
+      // load first page
+      const from = 0;
+      const to = PAGE_SIZE - 1;
       const { data, error } = await supabase
         .from("videos")
         .select("*")
-        .eq("status", "approved");
+        .eq("status", "approved")
+        .range(from, to);
       if (error) throw new Error(error.message);
-      return (data as Video[]) || [];
+      setVideosState((data as Video[]) || []);
+      setPage(1);
+      return { initial: true };
     },
   });
+
+  const loadMore = async () => {
+    const from = page * PAGE_SIZE;
+    const to = from + PAGE_SIZE - 1;
+    const { data, error } = await supabase
+      .from("videos")
+      .select("*")
+      .eq("status", "approved")
+      .range(from, to);
+    if (!error && data) {
+      setVideosState((prev) => [...prev, ...(data as Video[])]);
+      setPage((p) => p + 1);
+    }
+  };
 
   if (loading) {
     return <Loading message="Loading videos..." />;
@@ -168,11 +186,11 @@ export default function Home() {
             <div className="text-center text-gray-500 py-16">Loading videos...</div>
           ) : error ? (
             <div className="text-center text-red-500 py-16">Error loading videos: {(error as any).message}</div>
-          ) : (search ? searchResults.length === 0 : videos.length === 0) ? (
+          ) : (search ? searchResults.length === 0 : videosState.length === 0) ? (
             <div className="text-center text-gray-500 py-16">No videos found.</div>
           ) : (
             <ul className="grid gap-8">
-                {(search ? searchResults : videos).map((video) => (
+                {(search ? searchResults : videosState).map((video) => (
                   <li key={video.id} className="p-6 rounded-xl shadow bg-gray-50 flex flex-col gap-4">
                     <div className="flex flex-row gap-4 items-center">
                       <div className="flex-1 flex flex-col gap-2">
@@ -221,6 +239,16 @@ export default function Home() {
             </ul>
           )}
         </main>
+        {!search && (
+          <div className="w-full flex justify-center mt-6">
+            <button
+              onClick={loadMore}
+              className="px-4 py-2 rounded-lg bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition"
+            >
+              Load more
+            </button>
+          </div>
+        )}
          <footer className="w-full py-4 mt-8 border-t border-gray-200 bg-white/60">
            <div className="container mx-auto px-4 text-xs text-gray-500 flex items-center justify-center">
              <div className="flex items-center justify-center w-full whitespace-nowrap">
