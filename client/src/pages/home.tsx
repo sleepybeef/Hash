@@ -8,7 +8,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 const CommentSection = lazy(() => import("../components/comment-section"));
 import { Loading, ErrorFeedback } from "../components/ui/feedback";
-import { useFeatures } from "../lib/features";
+// Removed GPT-5 feature flag wiring
 
 console.log("Home.tsx loaded");
 console.log("VITE_SUPABASE_URL:", import.meta.env.VITE_SUPABASE_URL);
@@ -30,7 +30,7 @@ export default function Home() {
   const [search, setSearch] = useState("");
   const [searchResults, setSearchResults] = useState<Video[]>([]);
   const { user, setUser } = useAuth();
-  const { data: features } = useFeatures();
+  // No feature flags in use
 
   const handleVerified = (userData: any) => {
     setDialogOpen(false);
@@ -75,11 +75,7 @@ export default function Home() {
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-400 px-6 pt-4 md:px-12 md:pt-8 pb-6 relative">
       {/* Feature indicator: GPT-5 */}
-      {features?.enableGpt5 && (
-        <div className="absolute top-6 right-6 z-20 px-3 py-1 rounded-full bg-black/70 text-white text-xs tracking-wide border border-white/20">
-          AI: {features.aiModel}
-        </div>
-      )}
+      {/* AI model badge removed */}
       {/* Top left: sign-in or user info */}
       {!user ? (
         <button

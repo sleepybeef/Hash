@@ -3,7 +3,6 @@ import type { Express, Request, Response } from "express";
 import { createServer, Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, insertVideoSchema, insertVideoLikeSchema, insertSubscriptionSchema, insertVideoViewSchema } from "@shared/schema";
-import type { Features } from "@shared/features";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -16,15 +15,6 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Feature flags endpoint
-  app.get("/api/features", async (_req: Request, res: Response) => {
-    const features: Features = {
-      enableGpt5: String(process.env.ENABLE_GPT5 || "true").toLowerCase() === "true",
-      aiModel: process.env.AI_MODEL || "gpt-5",
-    };
-    res.json(features);
-  });
-
   // Create a comment
   app.post("/api/comments", async (req: Request, res: Response) => {
     try {
