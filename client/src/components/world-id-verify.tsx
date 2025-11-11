@@ -20,10 +20,11 @@ interface WorldIdVerifyProps {
   onClose: () => void;
   onVerified: (user: any) => void;
   appId: string;
+  mode?: 'modal' | 'inline'; // inline mode for direct trigger flows
 }
 
 
-export default function WorldIdVerify({ isOpen, onClose, onVerified, appId }: WorldIdVerifyProps) {
+export default function WorldIdVerify({ isOpen, onClose, onVerified, appId, mode = 'modal' }: WorldIdVerifyProps) {
   const [username, setUsername] = useState("");
   const [step, setStep] = useState<"idle" | "checking" | "existing" | "new">("idle");
   const [worldIdProof, setWorldIdProof] = useState<any>(null);
@@ -96,24 +97,25 @@ export default function WorldIdVerify({ isOpen, onClose, onVerified, appId }: Wo
     onClose();
   };
 
-  return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md bg-gray-50 rounded-3xl">
-        <DialogHeader>
-          <DialogTitle className="flex items-center space-x-2">
+  const content = (
+    <div className="max-w-md bg-gray-50 rounded-3xl p-0 m-0">
+      {mode === 'modal' && (
+        <div className="px-6 pt-6">
+          <div className="flex items-center space-x-2 text-lg font-semibold">
             <i className="fas fa-globe text-accent"></i>
             <span>World ID Authentication</span>
-          </DialogTitle>
-        </DialogHeader>
+          </div>
+        </div>
+      )}
 
-        <div className="space-y-6 text-black">
+  <div className="space-y-6 text-black px-6 pb-6 pt-4">
           {/* Info Section */}
           <div className="bg-accent/10 border border-accent/20 rounded-3xl p-4">
             <div className="flex items-start space-x-3">
               <i className="fas fa-info-circle text-accent mt-0.5"></i>
               <div className="text-sm">
                 {step === "idle" && <>
-                  <p className="font-bold text-accent mb-1">Sign In or Create Account</p>
+                  <p className="font-bold text-accent mb-1">Verify & Continue</p>
                   <p className="text-black">Verify with World ID to sign in or create a new account. One World ID equals one account.</p>
                 </>}
                 {step === "checking" && <p className="text-black">Checking account status...</p>}
@@ -132,23 +134,23 @@ export default function WorldIdVerify({ isOpen, onClose, onVerified, appId }: Wo
           <div className="space-y-4">
             {/* Initial step: show World ID widget */}
             {step === "idle" && (
-              !isMobile ? (
-                <IDKitWidget
-                  app_id={appId as `app_${string}`}
-                  action={"video-plat-verif"}
-                  signal={""}
-                  onSuccess={handleVerify}
-                  handleVerify={handleVerify}
-                  verification_level={VerificationLevel.Orb}
-                >
-                  {({ open }: { open: () => void }) => (
-                    <Button type="button" onClick={open} variant="default" className="w-full mt-2 text-black bg-white border border-black rounded-3xl font-bold">
-                      Verify with World ID
-                    </Button>
-                  )}
-                </IDKitWidget>
-              ) : (
-                <div className="flex flex-col items-center space-y-2">
+              <div className="flex flex-col items-center space-y-2 w-full">
+                {!isMobile ? (
+                  <IDKitWidget
+                    app_id={appId as `app_${string}`}
+                    action={"video-plat-verif"}
+                    signal={username || ''}
+                    onSuccess={handleVerify}
+                    handleVerify={handleVerify}
+                    verification_level={VerificationLevel.Orb}
+                  >
+                    {({ open }: { open: () => void }) => (
+                      <Button type="button" onClick={open} variant="default" className="w-full mt-2 text-black bg-white border border-black rounded-3xl font-bold">
+                        Start Verification
+                      </Button>
+                    )}
+                  </IDKitWidget>
+                ) : (
                   <Button
                     type="button"
                     variant="default"
@@ -157,11 +159,11 @@ export default function WorldIdVerify({ isOpen, onClose, onVerified, appId }: Wo
                       window.location.href = `https://id.worldcoin.org/verify?app_id=${appId}&action=video-plat-verif`;
                     }}
                   >
-                    Verify in World App
+                    Open World App
                   </Button>
-                  <span className="text-xs text-black text-center">You will be redirected to World App for verification.</span>
-                </div>
-              )
+                )}
+                <span className="text-xs text-black text-center">We never store more than proof of uniqueness.</span>
+              </div>
             )}
 
             {/* Existing user: sign in (no longer shown, handled automatically) */}
@@ -197,18 +199,27 @@ export default function WorldIdVerify({ isOpen, onClose, onVerified, appId }: Wo
               </>
             )}
 
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              data-testid="button-cancel"
-              className="text-black border-gray-400 rounded-3xl"
-            >
-              Cancel
-            </Button>
+            {mode === 'modal' && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleClose}
+                data-testid="button-cancel"
+                className="text-black border-gray-400 rounded-3xl"
+              >
+                Cancel
+              </Button>
+            )}
           </div>
         </div>
-      </DialogContent>
+    </div>
+  );
+
+  if (mode === 'inline') return content;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="p-0 bg-transparent border-none shadow-none">{content}</DialogContent>
     </Dialog>
   );
 }

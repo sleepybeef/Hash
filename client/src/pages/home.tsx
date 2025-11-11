@@ -6,6 +6,7 @@ import { lazy, Suspense } from "react";
 const UploadModal = lazy(() => import("../components/upload-modal"));
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useIsMobile } from "../hooks/use-mobile";
 const CommentSection = lazy(() => import("../components/comment-section"));
 import { Loading, ErrorFeedback } from "../components/ui/feedback";
 
@@ -89,18 +90,33 @@ export default function Home() {
     setSearchResults((data as Video[]) || []);
   };
 
+  const isMobile = useIsMobile();
+
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-400 px-6 pt-4 md:px-12 md:pt-8 pb-6 relative">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-400 px-4 sm:px-6 md:px-12 pt-4 md:pt-8 pb-24 md:pb-6 relative">
   {/* top-right indicators removed */}
       {/* Top left: sign-in or user info */}
-      {!user ? (
+      {/* Auth / User block (responsive positioning) */}
+      {!user && !isMobile && (
         <button
           className="absolute top-6 left-6 z-20 px-5 py-2 rounded-full bg-white text-indigo-600 font-semibold shadow hover:bg-indigo-50 border border-indigo-200 transition"
           onClick={() => setDialogOpen(true)}
         >
           Sign in With World ID
         </button>
-      ) : (
+      )}
+      {!user && isMobile && (
+        <div className="w-full max-w-2xl mx-auto mt-2 mb-4">
+          <button
+            className="w-full px-5 py-3 rounded-2xl bg-white text-indigo-600 font-semibold shadow hover:bg-indigo-50 border border-indigo-200 transition flex items-center justify-center gap-2"
+            onClick={() => setDialogOpen(true)}
+          >
+            <i className="fas fa-globe"></i>
+            <span>Sign in with World ID</span>
+          </button>
+        </div>
+      )}
+      {user && !isMobile && (
         <div className="absolute top-6 left-6 z-20 flex flex-col items-start">
           <div className="px-5 py-2 rounded-full bg-white text-indigo-600 font-semibold shadow border border-indigo-200 transition flex items-center gap-2 mb-2">
             <i className="fas fa-user-circle text-indigo-600"></i>
@@ -112,6 +128,27 @@ export default function Home() {
           >
             <i className="fas fa-upload mr-2"></i>
             Upload Video
+          </button>
+        </div>
+      )}
+      {user && isMobile && (
+        <div className="w-full max-w-2xl mx-auto mt-2 mb-4 flex flex-col gap-3">
+          <div className="w-full px-5 py-3 rounded-2xl bg-white text-indigo-600 font-semibold shadow border border-indigo-200 transition flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <i className="fas fa-user-circle text-indigo-600"></i>
+              <span>{user.username || "User"}</span>
+            </div>
+            <div className={`flex items-center gap-2 text-xs ${user.isVerified ? 'text-green-600' : 'text-orange-600'}`}> 
+              <i className="fas fa-globe"></i>
+              {user.isVerified ? 'Verified' : 'Unverified'}
+            </div>
+          </div>
+          <button
+            className="w-full px-5 py-3 rounded-2xl bg-indigo-600 text-white font-semibold shadow hover:bg-indigo-700 border border-indigo-200 transition flex items-center justify-center gap-2"
+            onClick={() => setUploadOpen(true)}
+          >
+            <i className="fas fa-upload"></i>
+            <span>Upload Video</span>
           </button>
         </div>
       )}
@@ -137,7 +174,7 @@ export default function Home() {
         </header>
         {/* Tab Bar */}
         <nav className="w-full flex justify-center mb-4">
-          <ul className="flex gap-4 items-center bg-white bg-opacity-90 rounded-xl shadow p-2 min-h-[56px]">
+          <ul className="flex gap-4 items-center bg-white bg-opacity-90 rounded-xl shadow p-2 min-h-[56px] overflow-x-auto scrollbar-none">
             <li className="flex items-center justify-center">
               <Link to="/" className="px-4 py-2 rounded-lg font-medium text-indigo-600 bg-indigo-100 hover:bg-indigo-200 transition flex items-center justify-center">Home</Link>
             </li>
@@ -271,6 +308,36 @@ export default function Home() {
            </div>
          </footer>
       </div>
+      {/* Mobile Bottom Nav */}
+      {isMobile && (
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-indigo-200 shadow-lg flex items-center justify-around py-2 px-2 rounded-t-2xl">
+          <Link to="/" className="flex flex-col items-center text-xs font-medium text-indigo-600">
+            <i className="fas fa-home text-lg"></i>
+            <span>Home</span>
+          </Link>
+          <Link to="/subscriptions" className="flex flex-col items-center text-xs font-medium text-gray-600">
+            <i className="fas fa-star text-lg"></i>
+            <span>Subs</span>
+          </Link>
+          <Link to="/my-profile" className="flex flex-col items-center text-xs font-medium text-gray-600">
+            <i className="fas fa-user text-lg"></i>
+            <span>Profile</span>
+          </Link>
+          {user?.isModerator && (
+            <Link to="/admin" className="flex flex-col items-center text-xs font-medium text-pink-600">
+              <i className="fas fa-shield-halved text-lg"></i>
+              <span>Admin</span>
+            </Link>
+          )}
+          <button
+            onClick={() => user ? setUploadOpen(true) : setDialogOpen(true)}
+            className="flex flex-col items-center text-xs font-medium text-gray-600"
+          >
+            <i className="fas fa-upload text-lg"></i>
+            <span>{user ? 'Upload' : 'Sign In'}</span>
+          </button>
+        </nav>
+      )}
     </div>
   );
 }
