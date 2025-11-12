@@ -1,10 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');
-/* Remove body background when moderator-gradient-bg is present */
-	background: linear-gradient(135deg, #1e3a8a 0%, #e5e7eb 100%) !important;
-	background-color: #1e3a8a !important;
-
+/* Clean up stray global background declarations */
 
 body {
+	font-family: 'Inter', sans-serif;
+	min-height: 100vh;
 }
 
 /* Force blue-grey gradient for moderator pages */
