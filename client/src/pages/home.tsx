@@ -92,7 +92,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-400 px-4 sm:px-6 md:px-12 pt-4 md:pt-8 pb-24 md:pb-6 relative">
+    <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-400 px-4 sm:px-6 md:px-12 pt-4 md:pt-8 pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6 relative">
   {/* top-right indicators removed */}
       {/* Top left: sign-in or user info */}
       {/* Auth / User block (responsive positioning) */}
@@ -166,7 +166,7 @@ export default function Home() {
       </Suspense>
       <div className="w-full max-w-2xl mx-auto flex flex-col items-center">
         <header className="w-full flex flex-col items-center pb-2">
-          <h1 className="text-4xl font-extrabold mb-2 text-center font-sans tracking-tight" style={{ fontFamily: 'Inter, DM Sans, Montserrat, sans-serif' }}>Welcome to Hash</h1>
+          <h1 className="text-3xl sm:text-4xl font-extrabold mb-2 text-center font-sans tracking-tight" style={{ fontFamily: 'Inter, DM Sans, Montserrat, sans-serif' }}>Welcome to Hash</h1>
           <div className="text-base text-gray-700 text-center mb-6 max-w-xl">
             Hash is a Web-3 video platform with human connection in mind. Sign in with World ID to upload videos, comment, like, or subscribe to users!
           </div>
@@ -309,7 +309,7 @@ export default function Home() {
       </div>
       {/* Mobile Bottom Nav */}
       {isMobile && (
-        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-indigo-200 shadow-lg flex items-center justify-around py-2 px-2 rounded-t-2xl">
+        <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur border-t border-indigo-200 shadow-lg flex items-center justify-around py-2 px-2 rounded-t-2xl pb-[calc(env(safe-area-inset-bottom))]">
           <Link to="/" className="flex flex-col items-center text-xs font-medium text-indigo-600">
             <i className="fas fa-home text-lg"></i>
             <span>Home</span>
