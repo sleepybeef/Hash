@@ -135,33 +135,20 @@ export default function WorldIdVerify({ isOpen, onClose, onVerified, appId, mode
             {/* Initial step: show World ID widget */}
             {step === "idle" && (
               <div className="flex flex-col items-center space-y-2 w-full">
-                {!isMobile ? (
-                  <IDKitWidget
-                    app_id={appId as `app_${string}`}
-                    action={"video-plat-verif"}
-                    signal={username || ''}
-                    onSuccess={handleVerify}
-                    handleVerify={handleVerify}
-                    verification_level={VerificationLevel.Orb}
-                  >
-                    {({ open }: { open: () => void }) => (
-                      <Button type="button" onClick={open} variant="default" className="w-full mt-2 text-black bg-white border border-black rounded-3xl font-bold">
-                        Start Verification
-                      </Button>
-                    )}
-                  </IDKitWidget>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="default"
-                    className="w-full mt-2 text-black bg-white border border-black rounded-3xl font-bold"
-                    onClick={() => {
-                      window.location.href = `https://id.worldcoin.org/verify?app_id=${appId}&action=video-plat-verif`;
-                    }}
-                  >
-                    Open World App
-                  </Button>
-                )}
+                <IDKitWidget
+                  app_id={appId as `app_${string}`}
+                  action={"video-plat-verif"}
+                  signal={username || ''}
+                  onSuccess={handleVerify}
+                  handleVerify={handleVerify}
+                  verification_level={VerificationLevel.Orb}
+                >
+                  {({ open }: { open: () => void }) => (
+                    <Button type="button" onClick={open} variant="default" className="w-full mt-2 text-black bg-white border border-black rounded-3xl font-bold">
+                      {isMobile ? "Open World App" : "Start Verification"}
+                    </Button>
+                  )}
+                </IDKitWidget>
                 <span className="text-xs text-black text-center">We never store more than proof of uniqueness.</span>
               </div>
             )}
