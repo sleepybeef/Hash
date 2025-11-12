@@ -33,6 +33,7 @@ export default function Home() {
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 12;
   const { user, setUser } = useAuth();
+  const isMobile = useIsMobile();
   // No feature flags in use
 
   const handleVerified = (userData: any) => {
@@ -89,8 +90,6 @@ export default function Home() {
       .or(`title.ilike.%${search}%,description.ilike.%${search}%,id.eq.${search},ipfs_hash.eq.${search}`);
     setSearchResults((data as Video[]) || []);
   };
-
-  const isMobile = useIsMobile();
 
   return (
     <div className="min-h-screen w-full flex flex-col items-center justify-center bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-400 px-4 sm:px-6 md:px-12 pt-4 md:pt-8 pb-24 md:pb-6 relative">
